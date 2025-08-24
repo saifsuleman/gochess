@@ -1,0 +1,114 @@
+package fen
+
+import (
+	"fmt"
+	"gochess/core"
+	"strings"
+)
+
+func DefaultFEN() string {
+	return "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+}
+
+func squareFromString(s string) core.Position {
+	if s == "-" {
+		return 64
+	}
+	file := int(s[0] - 'a')
+	rank := int(s[1] - '1')
+	return core.Position(file + rank*8)
+}
+
+func LoadFromFEN(fen string) (*core.Board, error) {
+	parts := strings.Split(fen, " ")
+	if len(parts) < 4 {
+		return nil, fmt.Errorf("invalid FEN; not enough fields %s", fen)
+	}
+
+	board := core.NewBoard()
+	// 1. Piece placement
+	ranks := strings.Split(parts[0], "/")
+	if len(ranks) != 8 {
+		return nil, fmt.Errorf("invalid FEN: expected 8 ranks")
+	}
+
+	for rank := 7; rank >= 0; rank-- {
+		row := ranks[7-rank] // FEN goes rank8 -> rank1
+		file := 0
+		for _, ch := range row {
+			if ch >= '1' && ch <= '8' {
+				file += int(ch - '0')
+				continue
+			}
+			var piece core.Piece
+			switch ch {
+			case 'P':
+				piece = core.PieceWhitePawn
+			case 'N':
+				piece = core.PieceWhiteKnight
+			case 'B':
+				piece = core.PieceWhiteBishop
+			case 'R':
+				piece = core.PieceWhiteRook
+			case 'Q':
+				piece = core.PieceWhiteQueen
+			case 'K':
+				piece = core.PieceWhiteKing
+			case 'p':
+				piece = core.PieceBlackPawn
+			case 'n':
+				piece = core.PieceBlackKnight
+			case 'b':
+				piece = core.PieceBlackBishop
+			case 'r':
+				piece = core.PieceBlackRook
+			case 'q':
+				piece = core.PieceBlackQueen
+			case 'k':
+				piece = core.PieceBlackKing
+			default:
+				return nil, fmt.Errorf("invalid piece char: %c", ch)
+			}
+			sq := rank*8 + file
+			board.AddPiece(core.Position(sq), piece)
+			file++
+		}
+		if file != 8 {
+			return nil, fmt.Errorf("invalid FEN rank: %s", row)
+		}
+	}
+
+	// 2. Active color
+	switch parts[1] {
+	case "w":
+		board.WhiteToMove = true
+	case "b":
+		board.WhiteToMove = false
+	default:
+		return nil, fmt.Errorf("invalid active color: %s", parts[1])
+	}
+
+	// 3. Castling rights
+	board.CastlingRights = core.CastlingRightsNone
+	if parts[2] != "-" {
+		for _, ch := range parts[2] {
+			switch ch {
+			case 'K':
+				board.CastlingRights |= core.CastlingWhiteKingside
+			case 'Q':
+				board.CastlingRights |= core.CastlingWhiteQueenside
+			case 'k':
+				board.CastlingRights |= core.CastlingBlackKingside
+			case 'q':
+				board.CastlingRights |= core.CastlingBlackQueenside
+			default:
+				return nil, fmt.Errorf("invalid castling right: %c", ch)
+			}
+		}
+	}
+
+	// 4. En passant target
+	board.EnPassantTarget = squareFromString(parts[3])
+
+	return board, nil
+}

@@ -43,14 +43,43 @@ func NewBoard() *Board {
     }
 }
 
-func (b *Board) removePiece(pos Position, piece Piece) {
+func BoardEquals(a, b *Board) bool {
+	if a.WhiteToMove != b.WhiteToMove ||
+		a.EnPassantTarget != b.EnPassantTarget ||
+		a.CastlingRights != b.CastlingRights ||
+		len(a.UndoInfo) != len(b.UndoInfo) {
+		return false
+	}
+
+	for i := range 64 {
+		if a.Pieces[i] != b.Pieces[i] {
+			return false
+		}
+	}
+
+	for color := range 2 {
+		for type_ := range 6 {
+			if a.PieceBitboards[color][type_] != b.PieceBitboards[color][type_] {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func (b *Board) RemovePiece(pos Position, piece Piece) {
 	if pos >= 64 || piece == PieceNone {
 		return
 	}
 	b.Pieces[pos] = PieceNone
 	color := (piece & PieceColorMask) >> 3
-	type_ := (piece & PieceTypeMask) - 1
-	b.PieceBitboards[color][type_] &^= (1 << pos)
+	type_ := int(piece & PieceTypeMask) - 1
+
+	if type_ >= 0 {
+		b.PieceBitboards[color][type_] &^= (1 << pos)
+	}
+
 	if color == 0 {
 		b.WhitePieces &^= (1 << pos)
 	} else {
@@ -58,7 +87,7 @@ func (b *Board) removePiece(pos Position, piece Piece) {
 	}
 }
 
-func (b *Board) addPiece(pos Position, piece Piece) {
+func (b *Board) AddPiece(pos Position, piece Piece) {
 	if pos >= 64 || piece == PieceNone {
 		return
 	}
@@ -82,19 +111,65 @@ func (b *Board) Pop() {
 
 	from := undo.MoveFrom
 	to := undo.MoveTo
-	captured := undo.CapturedPiece
+	movedPiece := b.Pieces[to]  // The piece that moved
 
-	b.addPiece(from, b.Pieces[to])
-	b.removePiece(to, b.Pieces[to])
+	// Undo move: put moving piece back to 'from'
+	b.RemovePiece(to, movedPiece)
+	b.AddPiece(from, movedPiece)
 
-	if captured != PieceNone {
-		b.addPiece(to, captured)
+	// Restore captured piece
+	if undo.CapturedPiece != PieceNone {
+		b.AddPiece(to, undo.CapturedPiece)
 	}
 
+	// Restore en passant target and castling rights
 	b.EnPassantTarget = undo.EnPassantTarget
 	b.CastlingRights = undo.CastlingRights
+
+	// Handle undoing castling rook move
+	pieceType := movedPiece & PieceTypeMask
+	if pieceType == PieceTypeKing {
+		switch from {
+		case 4: // White king starting square
+			// Kingside castle
+			switch to {
+			case 6:
+				b.RemovePiece(5, PieceWhiteRook)
+				b.AddPiece(7, PieceWhiteRook)
+			case 2: // Queenside castle
+				b.RemovePiece(3, PieceWhiteRook)
+				b.AddPiece(0, PieceWhiteRook)
+			}
+		case 60: // Black king starting square
+			// Kingside castle
+			if to == 62 {
+				b.RemovePiece(61, PieceBlackRook)
+				b.AddPiece(63, PieceBlackRook)
+			} else if to == 58 { // Queenside castle
+				b.RemovePiece(59, PieceBlackRook)
+				b.AddPiece(56, PieceBlackRook)
+			}
+		}
+	}
+
+	// Handle undoing en passant capture
+	if pieceType == PieceTypePawn && abs(int(to)-int(from)) == 7 || abs(int(to)-int(from)) == 9 {
+		if undo.CapturedPiece != PieceNone && (to == b.EnPassantTarget) {
+			// Captured pawn was removed via en passant, restore it
+			capPos := Position(0)
+			if (movedPiece&PieceColorMask)>>3 == 0 { // White pawn
+				capPos = to - 8
+			} else {
+				capPos = to + 8
+			}
+			b.AddPiece(capPos, undo.CapturedPiece)
+		}
+	}
+
+	// Toggle side to move
 	b.WhiteToMove = !b.WhiteToMove
 }
+
 
 func (b *Board) Push(move Move) {
 	from := move.From
@@ -114,11 +189,11 @@ func (b *Board) Push(move Move) {
 	b.EnPassantTarget = 64
 
 	if captured != PieceNone {
-		b.removePiece(to, captured)
+		b.RemovePiece(to, captured)
 	}
 
-	b.removePiece(from, piece)
-	b.addPiece(to, piece)
+	b.RemovePiece(from, piece)
+	b.AddPiece(to, piece)
 
 	pieceType := piece & PieceTypeMask
 
@@ -140,12 +215,12 @@ func (b *Board) Push(move Move) {
 				capSq = to + 8
 			}
 			captured = b.Pieces[capSq]
-			b.removePiece(capSq, captured)
+			b.RemovePiece(capSq, captured)
 		}
 
 		if move.Promotion != PieceNone {
-			b.removePiece(to, piece)
-			b.addPiece(to, move.Promotion)
+			b.RemovePiece(to, piece)
+			b.AddPiece(to, move.Promotion)
 		}
 	case PieceTypeKing:
 		if b.WhiteToMove {
@@ -156,19 +231,19 @@ func (b *Board) Push(move Move) {
 
 		if move.IsCastleKingside() {
 			if b.WhiteToMove {
-				b.removePiece(7, PieceWhiteRook)
-				b.addPiece(5, PieceWhiteRook)
+				b.RemovePiece(7, PieceWhiteRook)
+				b.AddPiece(5, PieceWhiteRook)
 			} else {
-				b.removePiece(63, PieceBlackRook)
-				b.addPiece(61, PieceBlackRook)
+				b.RemovePiece(63, PieceBlackRook)
+				b.AddPiece(61, PieceBlackRook)
 			}
 		} else if move.IsCastleQueenside() {
 			if b.WhiteToMove {
-				b.removePiece(0, PieceWhiteRook)
-				b.addPiece(3, PieceWhiteRook)
+				b.RemovePiece(0, PieceWhiteRook)
+				b.AddPiece(3, PieceWhiteRook)
 			} else {
-				b.removePiece(56, PieceBlackRook)
-				b.addPiece(59, PieceBlackRook)
+				b.RemovePiece(56, PieceBlackRook)
+				b.AddPiece(59, PieceBlackRook)
 			}
 		}
 	case PieceTypeRook:

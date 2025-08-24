@@ -31,3 +31,11 @@ const (
 )
 
 type Piece uint8
+
+func (p Piece) Type() uint8 {
+	return uint8(p & PieceTypeMask)
+}
+
+func (p Piece) Color() uint8 {
+	return uint8(p & PieceColorMask)
+}
