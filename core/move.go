@@ -12,7 +12,11 @@ func (m Move) IsEnPassant() bool {
 		return false
 	}
 
-	return true // TODO
+	if m.Promotion != PieceNone {
+		return false
+	}
+
+	return true
 }
 
 func (m Move) IsCastleKingside() bool {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
+	"github.com/hajimehoshi/ebiten/v2/inpututil"
 )
 
 const (
@@ -35,7 +36,7 @@ func Init() {
 }
 
 type Game struct {
-	board        *core.Board
+	Board        *core.Board
 	engine			 *engine.Engine
 	selected     int
 	dragging     bool
@@ -52,7 +53,58 @@ func NewGame() *Game {
 		panic(err)
 	}
 
-	return &Game{board: board, selected: -1, engine: engine.NewEngine(board)}
+	game := &Game{Board: board, selected: -1, engine: engine.NewEngine(board)}
+	game.TestPushPop()
+	return game
+}
+
+func (g *Game) TestPushPop() {
+	for i := range 50 {
+		moveBoard := g.Board.DeepCopy()
+		moves := moveBoard.GenerateLegalMoves()
+		if len(moves) == 0 {
+			log.Println("No legal moves available")
+			return
+		}
+		move := moves[i%len(moves)]
+
+		copyBoard := g.Board.DeepCopy()
+
+		g.Board.Push(move)
+		g.Board.Pop()
+
+		if !core.BoardEquals(g.Board, copyBoard) {
+			log.Printf("Push/Pop failed for move: %+v\n", move)
+			log.Printf("is en passant: %v", move.IsEnPassant())
+			g.Board = copyBoard
+			return
+		} else {
+			g.Board.Push(move)
+		}
+	}
+}
+
+func (g *Game) TestPush() {
+	boardCopy := g.Board.DeepCopy()
+
+	moves := g.Board.GenerateLegalMoves()
+	if len(moves) == 0 {
+		log.Println("No legal moves available")
+		return
+	}
+	move := moves[0]
+
+	if !g.Board.IsMoveLegal(move) {
+		log.Println("Move is not legal:", move)
+	}
+
+	g.Board = boardCopy
+
+	g.Board.Push(move)
+}
+
+func (g *Game) TestPop() {
+	g.Board.Pop()
 }
 
 func (g *Game) Update() error {
@@ -64,10 +116,10 @@ func (g *Game) Update() error {
 		square := g.xyToSquare(int(g.mouseX)/TILE_SIZE, int(g.mouseY)/TILE_SIZE)
 
 		// Pick up piece
-		if !g.dragging && square != -1 && g.board.Pieces[square] != core.PieceNone {
-			piece := g.board.Pieces[square]
-			if (g.board.WhiteToMove && piece.Color() == core.PieceColorWhite ||
-				(!g.board.WhiteToMove && piece.Color() == core.PieceColorBlack)) {
+		if !g.dragging && square != -1 && g.Board.Pieces[square] != core.PieceNone {
+			piece := g.Board.Pieces[square]
+			if (g.Board.WhiteToMove && piece.Color() == core.PieceColorWhite ||
+				(!g.Board.WhiteToMove && piece.Color() == core.PieceColorBlack)) {
 				g.selected = square
 				g.dragStart = square
 				g.dragging = true
@@ -77,7 +129,7 @@ func (g *Game) Update() error {
 	} else if g.dragging {
 		toSquare := g.xyToSquare(int(g.mouseX)/TILE_SIZE, int(g.mouseY)/TILE_SIZE)
 		if toSquare != -1 && toSquare != g.dragStart {
-			piece := g.board.Pieces[g.dragStart]
+			piece := g.Board.Pieces[g.dragStart]
 			move := core.Move{
 				From:      core.Position(g.dragStart),
 				To:        core.Position(toSquare),
@@ -85,22 +137,38 @@ func (g *Game) Update() error {
 				Promotion: core.PieceNone, // Could add promotion UI later
 			}
 
-			if g.board.IsMoveLegal(move) {
-				g.board.Push(move)
+			if g.Board.IsMoveLegal(move) {
+				g.Board.Push(move)
+				log.Printf("Moved piece %+v\n", move)
 				g.prevMoveFrom = g.dragStart
 				g.prevMoveTo = toSquare
 
-				engineMove := g.engine.FindBestMove()
-				if engineMove != nil {
-					g.board.Push(*engineMove)
-					g.prevMoveFrom = int(engineMove.From)
-					g.prevMoveTo = int(engineMove.To)
-				}
+				// boardCopy := g.Board.DeepCopy()
+				// engineMove := g.engine.FindBestMove()
+				// g.Board = boardCopy
+				// if engineMove != nil {
+				// 	g.Board.Push(*engineMove)
+				// 	g.prevMoveFrom = int(engineMove.From)
+				// 	g.prevMoveTo = int(engineMove.To)
+				// }
 			}
 		}
 
 		g.dragging = false
 		g.selected = -1
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyP) {
+		g.TestPush()
+	} else if inpututil.IsKeyJustPressed(ebiten.KeyO) {
+		g.TestPop()
+	} else if inpututil.IsKeyJustPressed(ebiten.KeyR) {
+		g.Board, _ = fen.LoadFromFEN(fen.DefaultFEN())
+		g.selected = -1
+		g.dragging = false
+		g.dragStart = -1
+		g.prevMoveFrom = -1
+		g.prevMoveTo = -1
 	}
 
 	return nil
@@ -127,7 +195,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 				ebitenutil.DrawRect(screen, float64(x*TILE_SIZE), float64(y*TILE_SIZE), TILE_SIZE, TILE_SIZE, SELECT_COLOR)
 			}
 
-			piece := g.board.Pieces[square]
+			piece := g.Board.Pieces[square]
 			if piece != core.PieceNone {
 				// Skip drawing dragged piece at original square
 				if g.dragging && square == g.dragStart {
@@ -140,7 +208,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 	// Draw dragged piece smoothly under the cursor
 	if g.dragging && g.selected != -1 {
-		DrawPieceAtPixel(screen, pieceID(g.board.Pieces[g.selected]), g.mouseX, g.mouseY)
+		DrawPieceAtPixel(screen, pieceID(g.Board.Pieces[g.selected]), g.mouseX, g.mouseY)
 	}
 }
 

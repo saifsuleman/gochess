@@ -54,10 +54,9 @@ func (e *Engine) FindBestMove() *core.Move {
 		score, count := e.AlphaBeta(3, math.MinInt32, math.MaxInt32, false)
 		moveCount += count
 
-		e.board.Po()
+		e.board.Pop()
 
 		if !core.BoardEquals(e.board, &boardCopy) {
-			log.Println("Board state mismatch after move:", move)
 			e.board = &boardCopy // Restore the board state
 		}
 
@@ -125,10 +124,10 @@ func (e *Engine) AlphaBeta(depth int, alpha int, beta int, maximizing bool) (int
 
 			e.board.Push(move)
 			eval, moveCount := e.AlphaBeta(depth-1, alpha, beta, false)
-			e.board.Po()
+			e.board.Pop()
 
 			if !core.BoardEquals(e.board, &boardCopy) {
-				log.Println("Board state mismatch after move:", move)
+				log.Println("Board state mismatch after move:", move, move.IsEnPassant())
 				e.board = &boardCopy // Restore the board state
 			}
 
@@ -152,10 +151,10 @@ func (e *Engine) AlphaBeta(depth int, alpha int, beta int, maximizing bool) (int
 
 			e.board.Push(move)
 			eval, moveCount := e.AlphaBeta(depth-1, alpha, beta, true)
-			e.board.Po()
+			e.board.Pop()
 
 			if !core.BoardEquals(e.board, &boardCopy) {
-				log.Println("Board state mismatch after move:", move)
+				log.Println("Board state mismatch after move:", move, move.IsEnPassant())
 				e.board = &boardCopy // Restore the board state
 			}
 

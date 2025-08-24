@@ -17,6 +17,10 @@ type UndoInfo struct {
 	CapturedPiece 	Piece
 	CastlingRights 	uint8
 	EnPassantTarget Position
+	IsEnPassant			bool
+	IsCastleKingside bool
+	IsCastleQueenside bool
+	PromotedFrom		Piece  // Store original piece type for promotion undo
 }
 
 type Board struct {
@@ -41,6 +45,18 @@ func NewBoard() *Board {
         CastlingRights:   CastlingWhiteKingside | CastlingWhiteQueenside |
                           CastlingBlackKingside | CastlingBlackQueenside,
     }
+}
+
+func (b *Board) DeepCopy() *Board {
+    copyBoard := *b // shallow copy first
+
+    // Deep copy the UndoInfo slice
+    if b.UndoInfo != nil {
+        copyBoard.UndoInfo = make([]UndoInfo, len(b.UndoInfo))
+        copy(copyBoard.UndoInfo, b.UndoInfo)
+    }
+
+    return &copyBoard
 }
 
 func BoardEquals(a, b *Board) bool {
@@ -91,6 +107,7 @@ func (b *Board) AddPiece(pos Position, piece Piece) {
 	if pos >= 64 || piece == PieceNone {
 		return
 	}
+
 	b.Pieces[pos] = piece
 	color := (piece & PieceColorMask) >> 3
 	type_ := (piece & PieceTypeMask) - 1
@@ -111,65 +128,76 @@ func (b *Board) Pop() {
 
 	from := undo.MoveFrom
 	to := undo.MoveTo
-	movedPiece := b.Pieces[to]  // The piece that moved
+	movedPiece := b.Pieces[to] // Piece that was moved (after the move)
 
-	// Undo move: put moving piece back to 'from'
+	// Undo the main move
 	b.RemovePiece(to, movedPiece)
 	b.AddPiece(from, movedPiece)
 
-	// Restore captured piece
+	// Restore captured piece if any
 	if undo.CapturedPiece != PieceNone {
-		b.AddPiece(to, undo.CapturedPiece)
-	}
-
-	// Restore en passant target and castling rights
-	b.EnPassantTarget = undo.EnPassantTarget
-	b.CastlingRights = undo.CastlingRights
-
-	// Handle undoing castling rook move
-	pieceType := movedPiece & PieceTypeMask
-	if pieceType == PieceTypeKing {
-		switch from {
-		case 4: // White king starting square
-			// Kingside castle
-			switch to {
-			case 6:
-				b.RemovePiece(5, PieceWhiteRook)
-				b.AddPiece(7, PieceWhiteRook)
-			case 2: // Queenside castle
-				b.RemovePiece(3, PieceWhiteRook)
-				b.AddPiece(0, PieceWhiteRook)
-			}
-		case 60: // Black king starting square
-			// Kingside castle
-			if to == 62 {
-				b.RemovePiece(61, PieceBlackRook)
-				b.AddPiece(63, PieceBlackRook)
-			} else if to == 58 { // Queenside castle
-				b.RemovePiece(59, PieceBlackRook)
-				b.AddPiece(56, PieceBlackRook)
-			}
-		}
-	}
-
-	// Handle undoing en passant capture
-	if pieceType == PieceTypePawn && abs(int(to)-int(from)) == 7 || abs(int(to)-int(from)) == 9 {
-		if undo.CapturedPiece != PieceNone && (to == b.EnPassantTarget) {
-			// Captured pawn was removed via en passant, restore it
-			capPos := Position(0)
+		if undo.IsEnPassant {
+			// En passant: captured piece is not at `to`, but adjacent rank
+			var capPos Position
 			if (movedPiece&PieceColorMask)>>3 == 0 { // White pawn
 				capPos = to - 8
 			} else {
 				capPos = to + 8
 			}
 			b.AddPiece(capPos, undo.CapturedPiece)
+		} else {
+			// Normal capture
+			b.AddPiece(to, undo.CapturedPiece)
 		}
 	}
 
-	// Toggle side to move
+	// Restore special state
+	b.EnPassantTarget = undo.EnPassantTarget
+	b.CastlingRights = undo.CastlingRights
+
+	// Undo castling rook moves
+	pieceType := movedPiece & PieceTypeMask
+	if pieceType == PieceTypeKing {
+		if undo.IsCastleKingside {
+			rookFrom, rookTo := Position(0), Position(0)
+			rookPiece := PieceNone
+			if (movedPiece & PieceColorMask) == 0 { // White
+				rookFrom = 7
+				rookTo = 5
+				rookPiece = PieceWhiteRook
+			} else { // Black
+				rookFrom = 63
+				rookTo = 61
+				rookPiece = PieceBlackRook
+			}
+			b.RemovePiece(rookTo, rookPiece)
+			b.AddPiece(rookFrom, rookPiece)
+		} else if undo.IsCastleQueenside {
+			rookFrom, rookTo := Position(0), Position(0)
+			rookPiece := PieceNone
+			if (movedPiece & PieceColorMask) == 0 { // White
+				rookFrom = 0
+				rookTo = 3
+				rookPiece = PieceWhiteRook
+			} else { // Black
+				rookFrom = 56
+				rookTo = 59
+				rookPiece = PieceBlackRook
+			}
+			b.RemovePiece(rookTo, rookPiece)
+			b.AddPiece(rookFrom, rookPiece)
+		}
+	}
+
+	// Undo promotion: restore original piece if this was a promotion
+	if undo.PromotedFrom != PieceNone {
+		b.RemovePiece(from, movedPiece)
+		b.AddPiece(from, undo.PromotedFrom)
+	}
+
+	// Toggle turn back
 	b.WhiteToMove = !b.WhiteToMove
 }
-
 
 func (b *Board) Push(move Move) {
 	from := move.From
@@ -183,22 +211,27 @@ func (b *Board) Push(move Move) {
 		CapturedPiece: captured,
 		CastlingRights: b.CastlingRights,
 		EnPassantTarget: b.EnPassantTarget,
+		IsEnPassant: move.IsEnPassant(),
+		IsCastleKingside: move.IsCastleKingside(),
+		IsCastleQueenside: move.IsCastleQueenside(),
+		PromotedFrom: PieceNone,
 	}
-	b.UndoInfo = append(b.UndoInfo, undo)
 
 	b.EnPassantTarget = 64
 
+	// Handle captured piece
 	if captured != PieceNone {
 		b.RemovePiece(to, captured)
 	}
 
+	// Make the basic move
 	b.RemovePiece(from, piece)
 	b.AddPiece(to, piece)
 
 	pieceType := piece & PieceTypeMask
-
 	switch pieceType {
 	case PieceTypePawn:
+		// Double pawn move - set en passant target
 		if abs(int(to) - int(from)) == 16 {
 			if b.WhiteToMove {
 				b.EnPassantTarget = from + 8
@@ -207,28 +240,35 @@ func (b *Board) Push(move Move) {
 			}
 		}
 
-		if move.IsEnPassant() {
+		// En passant capture
+		if b.EnPassantTarget == move.To && move.IsEnPassant() {
 			var capSq Position
 			if b.WhiteToMove {
 				capSq = to - 8
 			} else {
 				capSq = to + 8
 			}
-			captured = b.Pieces[capSq]
-			b.RemovePiece(capSq, captured)
+			capturedPawn := b.Pieces[capSq]
+			undo.CapturedPiece = capturedPawn // Store the actually captured piece
+			b.RemovePiece(capSq, capturedPawn)
 		}
 
+		// Promotion
 		if move.Promotion != PieceNone {
+			undo.PromotedFrom = piece // Store original piece for undo
 			b.RemovePiece(to, piece)
 			b.AddPiece(to, move.Promotion)
 		}
+
 	case PieceTypeKing:
+		// King move removes castling rights
 		if b.WhiteToMove {
 			b.CastlingRights &^= CastlingWhiteKingside | CastlingWhiteQueenside
 		} else {
 			b.CastlingRights &^= CastlingBlackKingside | CastlingBlackQueenside
 		}
 
+		// Handle castling rook moves
 		if move.IsCastleKingside() {
 			if b.WhiteToMove {
 				b.RemovePiece(7, PieceWhiteRook)
@@ -246,7 +286,9 @@ func (b *Board) Push(move Move) {
 				b.AddPiece(59, PieceBlackRook)
 			}
 		}
+
 	case PieceTypeRook:
+		// Rook move removes castling rights for that rook
 		switch from {
 		case 0:
 			b.CastlingRights &^= CastlingWhiteQueenside
@@ -259,18 +301,32 @@ func (b *Board) Push(move Move) {
 		}
 	}
 
-	// TODO: check if captured type is a rook and is the right color
-	switch to {
-	case 0:
-		b.CastlingRights &^= CastlingWhiteQueenside
-	case 7:
-		b.CastlingRights &^= CastlingWhiteKingside
-	case 56:
-		b.CastlingRights &^= CastlingBlackQueenside
-	case 63:
-		b.CastlingRights &^= CastlingBlackKingside
+	// Handle captured rook affecting castling rights
+	if captured != PieceNone && (captured&PieceTypeMask) == PieceTypeRook {
+		switch to {
+		case 0:
+			if captured == PieceWhiteRook {
+				b.CastlingRights &^= CastlingWhiteQueenside
+			}
+		case 7:
+			if captured == PieceWhiteRook {
+				b.CastlingRights &^= CastlingWhiteKingside
+			}
+		case 56:
+			if captured == PieceBlackRook {
+				b.CastlingRights &^= CastlingBlackQueenside
+			}
+		case 63:
+			if captured == PieceBlackRook {
+				b.CastlingRights &^= CastlingBlackKingside
+			}
+		}
 	}
 
+	// Store the updated undo info
+	b.UndoInfo = append(b.UndoInfo, undo)
+
+	// Toggle turn
 	b.WhiteToMove = !b.WhiteToMove
 }
 
