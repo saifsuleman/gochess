@@ -112,3 +112,4 @@ func LoadFromFEN(fen string) (*core.Board, error) {
 
 	return board, nil
 }
+

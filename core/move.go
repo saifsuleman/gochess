@@ -3,34 +3,21 @@ package core
 type Move struct {
 	From Position
 	To Position
-	Piece Piece
 	Promotion Piece
 }
 
-func (m Move) IsEnPassant() bool {
-	if m.Piece != PieceWhitePawn && m.Piece != PieceBlackPawn {
-		return false
-	}
-
-	if m.Promotion != PieceNone {
-		return false
-	}
-
+func (b *Board) IsMoveLegal(move Move) bool {
 	return true
 }
 
-func (m Move) IsCastleKingside() bool {
-	if m.Piece != PieceWhiteKing && m.Piece != PieceBlackKing {
-		return false
+func (b *Board) generatePseudoLegalMoves() []Move {
+	moves := []Move{}
+	for _, piece := range b.Pieces {
+		type_ :=  piece & PieceTypeMask
+		color := piece & PieceColorMask
+
+		switch type_ {
+		case PieceTypePawn:
+		}
 	}
-
-	return (m.From == 4 && m.To == 6) || (m.From == 60 && m.To == 62) // White or Black kingside castling
-}
-
-func (m Move) IsCastleQueenside() bool {
-	if m.Piece != PieceWhiteKing && m.Piece != PieceBlackKing {
-		return false
-	}
-
-	return (m.From == 4 && m.To == 2) || (m.From == 60 && m.To == 58) // White or Black queenside castling
 }

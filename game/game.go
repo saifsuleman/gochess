@@ -2,7 +2,6 @@ package game
 
 import (
 	"gochess/core"
-	"gochess/engine"
 	"gochess/fen"
 	"image"
 	"image/color"
@@ -37,7 +36,6 @@ func Init() {
 
 type Game struct {
 	Board        *core.Board
-	engine			 *engine.Engine
 	selected     int
 	dragging     bool
 	dragStart    int
@@ -53,58 +51,8 @@ func NewGame() *Game {
 		panic(err)
 	}
 
-	game := &Game{Board: board, selected: -1, engine: engine.NewEngine(board)}
-	game.TestPushPop()
+	game := &Game{Board: board, selected: -1}
 	return game
-}
-
-func (g *Game) TestPushPop() {
-	for i := range 50 {
-		moveBoard := g.Board.DeepCopy()
-		moves := moveBoard.GenerateLegalMoves()
-		if len(moves) == 0 {
-			log.Println("No legal moves available")
-			return
-		}
-		move := moves[i%len(moves)]
-
-		copyBoard := g.Board.DeepCopy()
-
-		g.Board.Push(move)
-		g.Board.Pop()
-
-		if !core.BoardEquals(g.Board, copyBoard) {
-			log.Printf("Push/Pop failed for move: %+v\n", move)
-			log.Printf("is en passant: %v", move.IsEnPassant())
-			g.Board = copyBoard
-			return
-		} else {
-			g.Board.Push(move)
-		}
-	}
-}
-
-func (g *Game) TestPush() {
-	boardCopy := g.Board.DeepCopy()
-
-	moves := g.Board.GenerateLegalMoves()
-	if len(moves) == 0 {
-		log.Println("No legal moves available")
-		return
-	}
-	move := moves[0]
-
-	if !g.Board.IsMoveLegal(move) {
-		log.Println("Move is not legal:", move)
-	}
-
-	g.Board = boardCopy
-
-	g.Board.Push(move)
-}
-
-func (g *Game) TestPop() {
-	g.Board.Pop()
 }
 
 func (g *Game) Update() error {
@@ -129,17 +77,14 @@ func (g *Game) Update() error {
 	} else if g.dragging {
 		toSquare := g.xyToSquare(int(g.mouseX)/TILE_SIZE, int(g.mouseY)/TILE_SIZE)
 		if toSquare != -1 && toSquare != g.dragStart {
-			piece := g.Board.Pieces[g.dragStart]
 			move := core.Move{
 				From:      core.Position(g.dragStart),
 				To:        core.Position(toSquare),
-				Piece:     piece,
 				Promotion: core.PieceNone, // Could add promotion UI later
 			}
 
-			if g.Board.IsMoveLegal(move) {
-				g.Board.Push(move)
-				log.Printf("Moved piece %+v\n", move)
+			if g.Board.IsMoveLegal(&move) {
+				g.Board.Push(&move)
 				g.prevMoveFrom = g.dragStart
 				g.prevMoveTo = toSquare
 
@@ -159,10 +104,19 @@ func (g *Game) Update() error {
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyP) {
-		g.TestPush()
-	} else if inpututil.IsKeyJustPressed(ebiten.KeyO) {
-		g.TestPop()
-	} else if inpututil.IsKeyJustPressed(ebiten.KeyR) {
+		g.Board.Pop()
+
+		lastMove := g.Board.LastMove()
+		if lastMove != nil {
+			g.prevMoveFrom = int(lastMove.From)
+			g.prevMoveTo = int(lastMove.To)
+		} else {
+			g.prevMoveFrom = -1
+			g.prevMoveTo = -1
+		}
+	}
+
+	if inpututil.IsKeyJustPressed(ebiten.KeyR) {
 		g.Board, _ = fen.LoadFromFEN(fen.DefaultFEN())
 		g.selected = -1
 		g.dragging = false
