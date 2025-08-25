@@ -10,7 +10,6 @@ const (
 	CastlingBlackQueenside = 0b1000
 )
 
-type Bitboard uint64
 type Position uint8
 
 type MoveHistoryEntry struct {

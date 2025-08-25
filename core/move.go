@@ -1,5 +1,48 @@
 package core
 
+import "math/bits"
+
+var (
+	magicRook = NewSlidingPiece([]Direction{
+		{dr: 1, df: 0}, // right
+		{dr: -1, df: 0}, // left
+		{dr: 0, df: 1}, // up
+		{dr: 0, df: -1}, // down
+	})
+
+	magicBishop = NewSlidingPiece([]Direction{
+		{dr: 1, df: 1}, // up-right
+		{dr: -1, df: -1}, // down-left
+		{dr: 1, df: -1}, // up-left
+		{dr: -1, df: 1}, // down-right
+	})
+
+	magicQueen = NewSlidingPiece([]Direction{
+		{dr: 1, df: 0}, // right
+		{dr: -1, df: 0}, // left
+		{dr: 0, df: 1}, // up
+		{dr: 0, df: -1}, // down
+		{dr: 1, df: 1}, // up-right
+		{dr: -1, df: -1}, // down-left
+		{dr: 1, df: -1}, // up-left
+		{dr: -1, df: 1}, // down-right
+	})
+)
+
+var kingAttacks [64]Bitboard = computeKingAttacks()
+var knightAttacks [64]Bitboard = computeKnightAttacks()
+var pawnAttacks [2][64]Bitboard = computePawnAttacks()
+
+type Direction struct {
+	dr, df int
+}
+
+type SlidingPiece struct {
+	directions []Direction
+	masks [64]Bitboard
+	attacks [64][]Bitboard
+}
+
 type Move struct {
 	From Position
 	To Position
@@ -12,12 +55,163 @@ func (b *Board) IsMoveLegal(move Move) bool {
 
 func (b *Board) generatePseudoLegalMoves() []Move {
 	moves := []Move{}
-	for _, piece := range b.Pieces {
-		type_ :=  piece & PieceTypeMask
-		color := piece & PieceColorMask
+	return moves
+}
 
-		switch type_ {
-		case PieceTypePawn:
+func rankOf(sq int) int { return sq >> 3 }
+func fileOf(sq int) int { return sq & 7 }
+
+func compress(occ, mask Bitboard) int {
+	index := 0
+	bitIndex := 0
+	for mask != 0 {
+		lsb := mask & -mask;
+		if occ & lsb != 0 {
+			index |= (1 << bitIndex)
+		}
+		mask &= mask - 1
+		bitIndex++
+	}
+	return index
+}
+
+// reconstructs the occupancy from a given index
+func decompress(index int, mask Bitboard) Bitboard {
+	var occ Bitboard
+	bitPosition := 0
+	for mask != 0 {
+		lsb := mask & -mask
+		if (index >> bitPosition) & 1 != 0 {
+			occ |= lsb
+		}
+		mask &= mask - 1
+		bitPosition++
+	}
+	return occ
+}
+
+func computeMask(sq int, directions []Direction) Bitboard {
+	var mask Bitboard
+	rank := rankOf(sq)
+	file := fileOf(sq)
+	for _, d := range directions {
+		r, f := rank, file
+		for {
+			r += d.dr
+			f += d.df
+
+			if r <= 0 || r >= 7 || f <= 0 || f >= 7 {
+				break
+			}
+			mask |= 1 << (r * 8 + f)
 		}
 	}
+	return mask
+}
+
+func computeSlidingSet(sq int, block Bitboard, directions []Direction) Bitboard {
+	var attacks Bitboard
+	rank := rankOf(sq)
+	file := fileOf(sq)
+	for _, d := range directions {
+		r, f := rank, file
+		for {
+			r += d.dr
+			f += d.df
+			if r < 0 || r > 7 || f < 0 || f > 7 {
+				break
+			}
+			sq := r*8 + f
+			attacks |= 1 << sq
+			if block & (1 << sq) != 0 {
+				break
+			}
+		}
+	}
+	return attacks
+}
+
+func NewSlidingPiece(directions []Direction) *SlidingPiece {
+	p := &SlidingPiece{
+		directions: directions,
+	}
+	for sq := range 64 {
+		mask := computeMask(sq, directions)
+		p.masks[sq] = mask
+		relevantBits := bits.OnesCount64(uint64(mask))
+		entries := 1 << relevantBits
+		p.attacks[sq] = make([]Bitboard, entries)
+		for index := range entries {
+			occ := decompress(int(index), mask)
+			attack := computeSlidingSet(sq, occ, directions)
+			p.attacks[sq][index] = attack
+		}
+	}
+	return p
+}
+
+func computeKnightAttacks() [64]Bitboard {
+	knightAttacks := [64]Bitboard{}
+	offsets := [8][2]int{
+		{2, 1}, {2, -1}, {-2, 1}, {-2, -1},
+		{1, 2}, {1, -2}, {-1, 2}, {-1, -2},
+	}
+	for sq := range 64 {
+		rank := rankOf(sq)
+		file := fileOf(sq)
+		for _, o := range offsets {
+			r := rank + o[0]
+			f := file + o[1]
+			if r >= 0 && r < 8 && f >= 0 && f < 8 {
+					knightAttacks[sq] |= 1 << (r*8 + f)
+			}
+		}
+	}
+	return knightAttacks
+}
+
+func computeKingAttacks() [64]Bitboard {
+	kingAttacks := [64]Bitboard{}
+	for sq := range 64 {
+		rank := rankOf(sq)
+		file := fileOf(sq)
+		for dr := -1; dr <= 1; dr++ {
+			for df := -1; df <= 1; df++ {
+				if dr == 0 && df == 0 {
+					continue
+				}
+				r := rank + dr
+				f := file + df
+				if r >= 0 && r < 8 && f >= 0 && f < 8 {
+					kingAttacks[sq] |= 1 << (r*8 + f)
+				}
+			}
+		}
+	}
+	return kingAttacks
+}
+
+func computePawnAttacks() [2][64]Bitboard {
+	pawnAttacks := [2][64]Bitboard{}
+	for sq := range 64 {
+		r := rankOf(sq)
+		f := fileOf(sq)
+
+		// White pawns attack diagonally up
+		if r+1 < 8 && f-1 >= 0 {
+			pawnAttacks[0][sq] |= 1 << ((r+1)*8 + (f-1))
+		}
+		if r+1 < 8 && f+1 < 8 {
+			pawnAttacks[0][sq] |= 1 << ((r+1)*8 + (f+1))
+		}
+
+		// Black pawns attack diagonally down
+		if r-1 >= 0 && f-1 >= 0 {
+			pawnAttacks[1][sq] |= 1 << ((r-1)*8 + (f-1))
+		}
+		if r-1 >= 0 && f+1 < 8 {
+			pawnAttacks[1][sq] |= 1 << ((r-1)*8 + (f+1))
+		}
+	}
+	return pawnAttacks
 }

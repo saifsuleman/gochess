@@ -83,19 +83,10 @@ func (g *Game) Update() error {
 				Promotion: core.PieceNone, // Could add promotion UI later
 			}
 
-			if g.Board.IsMoveLegal(&move) {
+			if g.Board.IsMoveLegal(move) {
 				g.Board.Push(&move)
 				g.prevMoveFrom = g.dragStart
 				g.prevMoveTo = toSquare
-
-				// boardCopy := g.Board.DeepCopy()
-				// engineMove := g.engine.FindBestMove()
-				// g.Board = boardCopy
-				// if engineMove != nil {
-				// 	g.Board.Push(*engineMove)
-				// 	g.prevMoveFrom = int(engineMove.From)
-				// 	g.prevMoveTo = int(engineMove.To)
-				// }
 			}
 		}
 
