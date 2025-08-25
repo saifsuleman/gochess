@@ -7,7 +7,6 @@ import (
 	"image"
 	"image/color"
 	"log"
-	"fmt"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -91,11 +90,11 @@ func (g *Game) Update() error {
 				g.prevMoveFrom = g.dragStart
 				g.prevMoveTo = toSquare
 
-				bestMove := g.engine.FindBestMove()
-				if bestMove != nil {
-					fmt.Printf("Engine plays %+v\n", bestMove)
-					g.Board.Push(bestMove)
-				}
+				// bestMove := g.engine.FindBestMove()
+				// if bestMove != nil {
+				// 	fmt.Printf("Engine plays %+v\n", bestMove)
+				// 	g.Board.Push(bestMove)
+				// }
 			}
 		}
 
