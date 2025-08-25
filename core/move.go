@@ -176,13 +176,21 @@ func computeAttacks(sq Position, directions []Direction, interiorMask Bitboard, 
 
 func computeLegalMoves(sq Position, blockers Bitboard, directions []Direction) Bitboard {
 	var bitboard Bitboard = 0
+
+	rank := sq >> 3
+	file := sq & 7
+
 	for _, d := range directions {
 		dr, df := d.dr, d.df
 		for step := 1; step < 8; step++ {
-			coord := int(sq) + step * (dr * 8 + df)
-			if coord < 0 || coord >= 64 {
+			newRank := int(rank) + dr * step
+			newFile := int(file) + df * step
+
+			if newRank < 0 || newRank > 7 || newFile < 0 || newFile > 7 {
 				break
 			}
+
+			coord := newRank * 8 + newFile
 			bitboard |= 1 << coord
 			if ((blockers >> coord) & 1) == 1 {
 				break
@@ -220,7 +228,7 @@ func computeInteriorMask(sq Position, directions []Direction) Bitboard {
 	for _, d := range directions {
 		delta := d.dr * 8 + d.df
 		for step := 1; step < 8; step++ {
-			coord := int(sq) + step * delta
+			coord := int(sq) + step * delta // TODO: check this? maybe it should be split by rank/file to prevent file wrapping
 			next := int(sq) + (step + 1) * delta
 			if next < 0 || next >= 64 {
 				break
