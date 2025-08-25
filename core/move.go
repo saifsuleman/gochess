@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"math/bits"
+	"slices"
 )
 
 var (
@@ -60,17 +61,50 @@ type CastleRights struct {
 
 // TODO: optimize later
 func (b *Board) IsMoveLegal(move Move) bool {
-	pseudoLegalMoves := b.generatePseudoLegalMoves()
-	for _, m := range pseudoLegalMoves {
-		if m != move {
-			continue
-		}
+	ourMoves := b.generatePseudoLegalMoves()
+	if !slices.Contains(ourMoves, move) {
+		return false
+	}
 
+	b.Push(&move)
+
+	kingPos := Position(0)
+	if b.WhiteToMove {
+		kingBB := b.PieceBitboards[0][PieceTypeKing-1]
+		if kingBB != 0 {
+			kingPos = Position(bits.TrailingZeros64(uint64(kingBB)))
+		}
+	} else {
+		kingBB := b.PieceBitboards[1][PieceTypeKing-1]
+		if kingBB != 0 {
+			kingPos = Position(bits.TrailingZeros64(uint64(kingBB)))
+		}
+	}
+
+	enemyMoves := b.generatePseudoLegalMoves()
+	isInCheck := false
+
+	for _, em := range enemyMoves {
+		if em.To == kingPos {
+			isInCheck = true
+			break
+		}
+	}
+
+	b.Pop()
+
+	return !isInCheck
+}
+
+func (b *Board) GenerateLegalMoves() []Move {
+	pseudoLegalMoves := b.generatePseudoLegalMoves()
+	legalMoves := []Move{}
+	for _, m := range pseudoLegalMoves {
 		b.Push(&m)
+		fmt.Println("0")
 
 		kingPos := Position(0)
-
-		if !b.WhiteToMove {
+		if b.WhiteToMove {
 			kingBB := b.PieceBitboards[0][PieceTypeKing-1]
 			if kingBB != 0 {
 				kingPos = Position(bits.TrailingZeros64(uint64(kingBB)))
@@ -82,29 +116,27 @@ func (b *Board) IsMoveLegal(move Move) bool {
 			}
 		}
 
-
-		// Generate enemy legal moves to see if any attack the king
 		enemyMoves := b.generatePseudoLegalMoves()
 		isInCheck := false
 		for _, em := range enemyMoves {
 			if em.To == kingPos {
-				fmt.Printf("when checking move %+v, found enemy move %+v attacking king at %d\n", m, em, kingPos)
 				isInCheck = true
 				break
 			}
 		}
 
 		b.Pop()
+		fmt.Println("1")
 
 		if !isInCheck {
-			return true
+			legalMoves = append(legalMoves, m)
 		}
 	}
-	return false
+	return legalMoves
 }
 
 func (b *Board) generatePseudoLegalMoves() []Move {
-	moves := make([]Move, 0, 256) // Pre-allocate with reasonable capacity
+	moves := []Move{}
 
 	myPieces := b.WhitePieces
 	theirPieces := b.BlackPieces
@@ -407,6 +439,7 @@ func computeMask(sq int, directions []Direction) Bitboard {
 			if r <= 0 || r >= 7 || f <= 0 || f >= 7 {
 				break
 			}
+
 			mask |= 1 << (r*8 + f)
 		}
 	}

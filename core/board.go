@@ -80,38 +80,38 @@ func (b *Board) Push(move *Move) {
 			b.AddPiece(to, move.Promotion)
 		}
 
-		if color == PieceColorWhite && to - from == 7 && b.EnPassantTarget == to - 8 {
+		if color == PieceColorWhite && to - from == 7 && b.EnPassantTarget == to {
 			removedPiece := b.Pieces[b.EnPassantTarget]
 			if removedPiece != PieceNone {
-				b.RemovePiece(b.EnPassantTarget, removedPiece)
+				b.RemovePiece(b.EnPassantTarget - 8, removedPiece)
 				captured = removedPiece
 				isEnPassant = true
 			}
-		} else if color == PieceColorWhite && to - from == 9 && b.EnPassantTarget == to - 8 {
+		} else if color == PieceColorWhite && to - from == 9 && b.EnPassantTarget == to {
 			removedPiece := b.Pieces[b.EnPassantTarget]
 			if removedPiece != PieceNone {
-				b.RemovePiece(b.EnPassantTarget, removedPiece)
+				b.RemovePiece(b.EnPassantTarget - 8, removedPiece)
 				captured = removedPiece
 				isEnPassant = true
 			}
-		} else if color == PieceColorBlack && from - to == 7 && b.EnPassantTarget == to + 8 {
+		} else if color == PieceColorBlack && from - to == 7 && b.EnPassantTarget == to {
 			removedPiece := b.Pieces[b.EnPassantTarget]
 			if removedPiece != PieceNone {
-				b.RemovePiece(b.EnPassantTarget, removedPiece)
+				b.RemovePiece(b.EnPassantTarget + 8, removedPiece)
 				captured = removedPiece
 				isEnPassant = true
 			}
-		} else if color == PieceColorBlack && from - to == 9 && b.EnPassantTarget == to + 8 {
+		} else if color == PieceColorBlack && from - to == 9 && b.EnPassantTarget == to {
 			removedPiece := b.Pieces[b.EnPassantTarget]
 			if removedPiece != PieceNone {
-				b.RemovePiece(b.EnPassantTarget, removedPiece)
+				b.RemovePiece(b.EnPassantTarget + 8, removedPiece)
 				captured = removedPiece
 				isEnPassant = true
 			}
 		} else if color == PieceColorWhite && to - from == 16 {
-			enPassantTarget = to
+			enPassantTarget = to - 8
 		} else if color == PieceColorBlack && from - to == 16 {
-			enPassantTarget = to
+			enPassantTarget = to + 8
 		} else {
 			enPassantTarget = 64 // Reset En Passant target
 		}
@@ -181,9 +181,9 @@ func (b *Board) Pop() {
 	case PieceTypePawn:
 		if lastMove.IsEnPassant {
 			if color == PieceColorWhite {
-				b.AddPiece(lastMove.EnPassantTarget, PieceBlackPawn)
+				b.AddPiece(lastMove.EnPassantTarget - 8, PieceBlackPawn)
 			} else {
-				b.AddPiece(lastMove.EnPassantTarget, PieceWhitePawn)
+				b.AddPiece(lastMove.EnPassantTarget + 8, PieceWhitePawn)
 			}
 		}
 	case PieceTypeKing:

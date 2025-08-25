@@ -2,6 +2,7 @@ package game
 
 import (
 	"gochess/core"
+	"gochess/engine"
 	"gochess/fen"
 	"image"
 	"image/color"
@@ -36,6 +37,7 @@ func Init() {
 
 type Game struct {
 	Board        *core.Board
+	engine 			 *engine.Engine
 	selected     int
 	dragging     bool
 	dragStart    int
@@ -50,8 +52,8 @@ func NewGame() *Game {
 	if err != nil {
 		panic(err)
 	}
-
-	game := &Game{Board: board, selected: -1}
+	engine := engine.NewEngine(board)
+	game := &Game{Board: board, selected: -1, engine: engine}
 	return game
 }
 
@@ -87,6 +89,12 @@ func (g *Game) Update() error {
 				g.Board.Push(&move)
 				g.prevMoveFrom = g.dragStart
 				g.prevMoveTo = toSquare
+
+				// bestMove := g.engine.FindBestMove()
+				// if bestMove != nil {
+				// 	fmt.Printf("Engine plays %+v\n", bestMove)
+				// 	g.Board.Push(bestMove)
+				// }
 			}
 		}
 
