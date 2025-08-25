@@ -3,7 +3,6 @@ package core
 import (
 	"fmt"
 	"math/bits"
-	"slices"
 )
 
 var (
@@ -62,11 +61,16 @@ type CastleRights struct {
 // TODO: optimize later
 func (b *Board) IsMoveLegal(move Move) bool {
 	pseudoLegalMoves := b.generatePseudoLegalMoves()
-	legalMoves := make([]Move, 0, len(pseudoLegalMoves))
 	for _, m := range pseudoLegalMoves {
+		if m != move {
+			continue
+		}
+
+		b.Push(&m)
+
 		kingPos := Position(0)
 
-		if b.WhiteToMove {
+		if !b.WhiteToMove {
 			kingBB := b.PieceBitboards[0][PieceTypeKing-1]
 			if kingBB != 0 {
 				kingPos = Position(bits.TrailingZeros64(uint64(kingBB)))
@@ -78,26 +82,25 @@ func (b *Board) IsMoveLegal(move Move) bool {
 			}
 		}
 
-		b.Push(&m)
 
 		// Generate enemy legal moves to see if any attack the king
 		enemyMoves := b.generatePseudoLegalMoves()
 		isInCheck := false
 		for _, em := range enemyMoves {
 			if em.To == kingPos {
-				fmt.Println("AHHHHHHHHHHH WE'RE ATTACKING THE KING!'")
+				fmt.Printf("when checking move %+v, found enemy move %+v attacking king at %d\n", m, em, kingPos)
 				isInCheck = true
 				break
 			}
 		}
 
-		if !isInCheck {
-			legalMoves = append(legalMoves, m)
-		}
-
 		b.Pop()
+
+		if !isInCheck {
+			return true
+		}
 	}
-	return slices.Contains(legalMoves, move)
+	return false
 }
 
 func (b *Board) generatePseudoLegalMoves() []Move {
@@ -538,5 +541,3 @@ func IsMoveQueensideCastle(move *Move, isWhite bool) bool {
 		return move.From == 60 && move.To == 58
 	}
 }
-
-
