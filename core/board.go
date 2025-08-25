@@ -1,7 +1,5 @@
 package core
 
-import "fmt"
-
 const (
 	CastlingRightsNone = 0b0000
 	CastlingWhiteKingside = 0b0001
@@ -75,8 +73,6 @@ func (b *Board) Push(move *Move) {
 	var enPassantTarget Position
 	isEnPassant := false
 
-	fmt.Println("Playing move from", from, "to", to, "with piece", piece)
-
 	switch type_ {
 	case PieceTypePawn:
 		if move.Promotion != PieceNone {
@@ -114,10 +110,8 @@ func (b *Board) Push(move *Move) {
 			}
 		} else if color == PieceColorWhite && to - from == 16 {
 			enPassantTarget = to
-			fmt.Printf("setting enPassantTarget to %d\n", enPassantTarget)
 		} else if color == PieceColorBlack && from - to == 16 {
 			enPassantTarget = to
-			fmt.Printf("setting enPassantTarget to %d\n", enPassantTarget)
 		} else {
 			enPassantTarget = 64 // Reset En Passant target
 		}
@@ -171,9 +165,6 @@ func (b *Board) Pop() {
 	b.RemovePiece(to, piece)
 	if captured != PieceNone && !lastMove.IsEnPassant {
 		b.AddPiece(to, captured)
-		fmt.Println("In Pop, adding captured piece back:", captured, "to position:", to)
-	} else {
-		fmt.Println("captured piece is null...")
 	}
 
 	b.AddPiece(from, piece)
