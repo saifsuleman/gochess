@@ -1,7 +1,6 @@
 package core
 
 import (
-	"fmt"
 	"math/bits"
 	"slices"
 )
@@ -61,78 +60,13 @@ type CastleRights struct {
 
 // TODO: optimize later
 func (b *Board) IsMoveLegal(move Move) bool {
-	ourMoves := b.generatePseudoLegalMoves()
-	if !slices.Contains(ourMoves, move) {
-		return false
-	}
-
-	b.Push(&move)
-
-	kingPos := Position(0)
-	if b.WhiteToMove {
-		kingBB := b.PieceBitboards[0][PieceTypeKing-1]
-		if kingBB != 0 {
-			kingPos = Position(bits.TrailingZeros64(uint64(kingBB)))
-		}
-	} else {
-		kingBB := b.PieceBitboards[1][PieceTypeKing-1]
-		if kingBB != 0 {
-			kingPos = Position(bits.TrailingZeros64(uint64(kingBB)))
-		}
-	}
-
-	enemyMoves := b.generatePseudoLegalMoves()
-	isInCheck := false
-
-	for _, em := range enemyMoves {
-		if em.To == kingPos {
-			isInCheck = true
-			break
-		}
-	}
-
-	b.Pop()
-
-	return !isInCheck
+	moves := b.GenerateLegalMoves()
+	return slices.Contains(moves, move)
 }
 
 func (b *Board) GenerateLegalMoves() []Move {
 	pseudoLegalMoves := b.generatePseudoLegalMoves()
-	legalMoves := []Move{}
-	for _, m := range pseudoLegalMoves {
-		b.Push(&m)
-		fmt.Println("0")
-
-		kingPos := Position(0)
-		if b.WhiteToMove {
-			kingBB := b.PieceBitboards[0][PieceTypeKing-1]
-			if kingBB != 0 {
-				kingPos = Position(bits.TrailingZeros64(uint64(kingBB)))
-			}
-		} else {
-			kingBB := b.PieceBitboards[1][PieceTypeKing-1]
-			if kingBB != 0 {
-				kingPos = Position(bits.TrailingZeros64(uint64(kingBB)))
-			}
-		}
-
-		enemyMoves := b.generatePseudoLegalMoves()
-		isInCheck := false
-		for _, em := range enemyMoves {
-			if em.To == kingPos {
-				isInCheck = true
-				break
-			}
-		}
-
-		b.Pop()
-		fmt.Println("1")
-
-		if !isInCheck {
-			legalMoves = append(legalMoves, m)
-		}
-	}
-	return legalMoves
+	return pseudoLegalMoves
 }
 
 func (b *Board) generatePseudoLegalMoves() []Move {
@@ -430,6 +364,7 @@ func computeMask(sq int, directions []Direction) Bitboard {
 	var mask Bitboard
 	rank := int(rankOf(uint8(sq)))
 	file := int(fileOf(uint8(sq)))
+
 	for _, d := range directions {
 		r, f := rank, file
 		for {
@@ -443,6 +378,7 @@ func computeMask(sq int, directions []Direction) Bitboard {
 			mask |= 1 << (r*8 + f)
 		}
 	}
+
 	return mask
 }
 
@@ -574,3 +510,63 @@ func IsMoveQueensideCastle(move *Move, isWhite bool) bool {
 		return move.From == 60 && move.To == 58
 	}
 }
+
+func SlidingPieceToBinary(p *SlidingPiece) []byte {
+	data := []byte{}
+	data = append(data, byte(len(p.directions)))
+	for _, d := range p.directions {
+		data = append(data, byte(d.dr), byte(d.df))
+	}
+	for _, mask := range p.masks {
+		for i := range 8 {
+			data = append(data, byte((mask>>(i*8))&0xFF))
+		}
+	}
+	for _, attacks := range p.attacks {
+		data = append(data, byte(len(attacks)>>8), byte(len(attacks)&0xFF))
+		for _, attack := range attacks {
+			for i := range 8 {
+				data = append(data, byte((attack>>(i*8))&0xFF))
+			}
+		}
+	}
+	return data
+}
+
+func SlidingPieceFromBinary(bytes []byte) *SlidingPiece {
+	p := &SlidingPiece{}
+	pos := 0
+	numDirections := int(bytes[pos])
+	pos++
+	p.directions = make([]Direction, numDirections)
+	for i := range numDirections {
+		p.directions[i] = Direction{
+			dr: int(int8(bytes[pos])),
+			df: int(int8(bytes[pos+1])),
+		}
+		pos += 2
+	}
+	for i := range 64 {
+		var mask Bitboard
+		for j := range 8 {
+			mask |= Bitboard(bytes[pos]) << (j * 8)
+			pos++
+		}
+		p.masks[i] = mask
+	}
+	for i := range 64 {
+		numAttacks := int(bytes[pos])<<8 | int(bytes[pos+1])
+		pos += 2
+		p.attacks[i] = make([]Bitboard, numAttacks)
+		for j := range numAttacks {
+			var attack Bitboard
+			for k := range 8 {
+				attack |= Bitboard(bytes[pos]) << (k * 8)
+				pos++
+			}
+			p.attacks[i][j] = attack
+		}
+	}
+	return p
+}
+

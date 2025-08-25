@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"fmt"
 	"gochess/core"
 	"math/rand"
 )
@@ -20,7 +19,5 @@ func (e *Engine) FindBestMove() *core.Move {
 		return nil
 	}
 	randomIndex := rand.Intn(len(moves))
-	fmt.Println("legal moves", moves)
-	fmt.Println("random index", randomIndex)
 	return &moves[randomIndex]
 }

@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/color"
 	"log"
+	"fmt"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -90,11 +91,11 @@ func (g *Game) Update() error {
 				g.prevMoveFrom = g.dragStart
 				g.prevMoveTo = toSquare
 
-				// bestMove := g.engine.FindBestMove()
-				// if bestMove != nil {
-				// 	fmt.Printf("Engine plays %+v\n", bestMove)
-				// 	g.Board.Push(bestMove)
-				// }
+				bestMove := g.engine.FindBestMove()
+				if bestMove != nil {
+					fmt.Printf("Engine plays %+v\n", bestMove)
+					g.Board.Push(bestMove)
+				}
 			}
 		}
 
@@ -117,6 +118,7 @@ func (g *Game) Update() error {
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyR) {
 		g.Board, _ = fen.LoadFromFEN(fen.DefaultFEN())
+		g.engine = engine.NewEngine(g.Board)
 		g.selected = -1
 		g.dragging = false
 		g.dragStart = -1
