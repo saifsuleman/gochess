@@ -26,6 +26,7 @@ type MoveHistoryEntry struct {
 type Board struct {
 	Pieces [64]Piece
 	PieceBitboards [2][6]Bitboard
+	AllPieces Bitboard
 	WhitePieces Bitboard
 	BlackPieces Bitboard
 	WhiteToMove bool
@@ -226,6 +227,7 @@ func (b *Board) RemovePiece(pos Position, piece Piece) {
 		return
 	}
 	b.Pieces[pos] = PieceNone
+	b.AllPieces &^= (1 << pos)
 	color := (piece & PieceColorMask) >> 3
 	type_ := int(piece & PieceTypeMask) - 1
 
@@ -246,6 +248,7 @@ func (b *Board) AddPiece(pos Position, piece Piece) {
 	}
 
 	b.Pieces[pos] = piece
+	b.AllPieces |= (1 << pos)
 	color := (piece & PieceColorMask) >> 3
 	type_ := (piece & PieceTypeMask) - 1
 	b.PieceBitboards[color][type_] |= (1 << pos)

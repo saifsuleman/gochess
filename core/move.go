@@ -1,5 +1,7 @@
 package core
 
+import "slices"
+
 import "math/bits"
 
 var (
@@ -50,139 +52,136 @@ type Move struct {
 }
 
 func (b *Board) IsMoveLegal(move Move) bool {
-	return true
+	pseudoLegalMoves := b.generatePseudoLegalMoves()
+	return slices.Contains(pseudoLegalMoves, move)
 }
 
 func (b *Board) generatePseudoLegalMoves() []Move {
 	moves := []Move{}
 
-	for sq := range 64 {
-		piece := b.Pieces[sq]
+	myPieces := b.WhitePieces
+	theirPieces := b.BlackPieces
+	myColor := PieceColorWhite >> 3
+	if !b.WhiteToMove {
+		myPieces = b.BlackPieces
+		theirPieces = b.WhitePieces
+		myColor = PieceColorBlack >> 3
+	}
 
-		if piece == PieceNone {
-			continue
-		}
+	occupied := b.AllPieces
 
-		switch piece {
-		case PieceWhitePawn:
+	pawns := b.PieceBitboards[myColor][PieceTypePawn - 1]
+	for _, sq := range pawns.Squares() {
+		if myColor == PieceColorWhite {
 			oneStep := sq + 8
-			if oneStep < 64 && b.Pieces[oneStep] == PieceNone {
+			if oneStep < 64 && (occupied >> oneStep) & 1 == 0 {
 				if rankOf(oneStep) == 7 {
 					for _, promo := range []Piece{PieceWhiteQueen, PieceWhiteRook, PieceWhiteBishop, PieceWhiteKnight} {
-						moves = append(moves, Move{From: Position(sq), To: Position(oneStep), Promotion: promo} )
+						moves = append(moves, Move{From: Position(sq), To: Position(oneStep), Promotion: promo})
 					}
 				} else {
 					moves = append(moves, Move{From: Position(sq), To: Position(oneStep)})
 					if rankOf(sq) == 1 {
 						twoStep := sq + 16
-						if b.Pieces[twoStep] == PieceNone {
+						if (occupied>>twoStep)&1 == 0 {
 							moves = append(moves, Move{From: Position(sq), To: Position(twoStep)})
 						}
 					}
 				}
 			}
-
+			// captures
 			for _, target := range pawnAttacks[0][sq].Squares() {
-				enemyPiece := b.Pieces[target]
-				enemyColor := enemyPiece.Color()
-				if (enemyPiece != PieceNone && enemyColor == PieceColorBlack) || Position(target - 8) == b.EnPassantTarget {
-					if rankOf(int(target)) == 7 {
+				if (theirPieces >> target) & 1 != 0 || Position(target-8) == b.EnPassantTarget {
+					if rankOf(target) == 7 {
 						for _, promo := range []Piece{PieceWhiteQueen, PieceWhiteRook, PieceWhiteBishop, PieceWhiteKnight} {
-							moves = append(moves, Move{From: Position(sq), To: Position(target), Promotion: promo} )
+							moves = append(moves, Move{From: Position(sq), To: Position(target), Promotion: promo})
 						}
 					} else {
 						moves = append(moves, Move{From: Position(sq), To: Position(target)})
 					}
 				}
 			}
-			continue
-		case PieceBlackPawn:
+		} else {
+			// black pawn
 			oneStep := sq - 8
-			if oneStep >= 0 && b.Pieces[oneStep] == PieceNone {
+			if sq >= 8 && (occupied>>oneStep)&1 == 0 {
 				if rankOf(oneStep) == 0 {
 					for _, promo := range []Piece{PieceBlackQueen, PieceBlackRook, PieceBlackBishop, PieceBlackKnight} {
-						moves = append(moves, Move{From: Position(sq), To: Position(oneStep), Promotion: promo} )
+						moves = append(moves, Move{From: Position(sq), To: Position(oneStep), Promotion: promo})
 					}
 				} else {
 					moves = append(moves, Move{From: Position(sq), To: Position(oneStep)})
+					// double push
 					if rankOf(sq) == 6 {
 						twoStep := sq - 16
-						if b.Pieces[twoStep] == PieceNone {
+						if (occupied>>twoStep)&1 == 0 {
 							moves = append(moves, Move{From: Position(sq), To: Position(twoStep)})
 						}
 					}
 				}
 			}
-
+			// captures
 			for _, target := range pawnAttacks[1][sq].Squares() {
-				enemyPiece := b.Pieces[target]
-				enemyColor := enemyPiece.Color()
-				if (enemyPiece != PieceNone && enemyColor == PieceColorWhite) || Position(target + 8) == b.EnPassantTarget {
-					if rankOf(int(target)) == 0 {
+				if (theirPieces>>target)&1 != 0 || Position(target+8) == b.EnPassantTarget {
+					if rankOf(target) == 0 {
 						for _, promo := range []Piece{PieceBlackQueen, PieceBlackRook, PieceBlackBishop, PieceBlackKnight} {
-							moves = append(moves, Move{From: Position(sq), To: Position(target), Promotion: promo} )
+							moves = append(moves, Move{From: Position(sq), To: Position(target), Promotion: promo})
 						}
 					} else {
 						moves = append(moves, Move{From: Position(sq), To: Position(target)})
 					}
 				}
 			}
-
-			continue
 		}
+	}
 
-		color := piece.Color()
-		type_ := piece.Type()
+	knights := b.PieceBitboards[myColor][PieceTypeKnight - 1]
+	for _, sq := range knights.Squares() {
+		for _, target := range knightAttacks[sq].Squares() {
+			if (myPieces>>target)&1 == 0 {
+				moves = append(moves, Move{From: Position(sq), To: Position(target)})
+			}
+		}
+	}
 
-		switch type_ {
-		case PieceTypeKnight:
-			for _, target := range knightAttacks[sq].Squares() {
-				enemyPiece := b.Pieces[target]
-				enemyColor := enemyPiece.Color()
-				if enemyPiece == PieceNone || enemyColor != color {
-					moves = append(moves, Move{From: Position(sq), To: Position(target)})
-				}
+	bishops := b.PieceBitboards[myColor][PieceTypeBishop - 1]
+	for _, sq := range bishops.Squares() {
+		mask := magicBishop.masks[sq]
+		index := compress(occupied, mask)
+		for _, target := range magicBishop.attacks[sq][index].Squares() {
+			if (myPieces>>target)&1 == 0 {
+				moves = append(moves, Move{From: Position(sq), To: Position(target)})
 			}
-		case PieceTypeBishop:
-			occ := b.Occupancy()
-			mask := magicBishop.masks[sq]
-			index := compress(occ, mask)
-			for _, target := range magicBishop.attacks[sq][index].Squares() {
-				enemyPiece := b.Pieces[target]
-				enemyColor := enemyPiece.Color()
-				if enemyPiece == PieceNone || enemyColor != color {
-					moves = append(moves, Move{From: Position(sq), To: Position(target)})
-				}
+		}
+	}
+
+	rooks := b.PieceBitboards[myColor][PieceTypeRook - 1]
+	for _, sq := range rooks.Squares() {
+		mask := magicRook.masks[sq]
+		index := compress(occupied, mask)
+		for _, target := range magicRook.attacks[sq][index].Squares() {
+			if (myPieces>>target)&1 == 0 {
+				moves = append(moves, Move{From: Position(sq), To: Position(target)})
 			}
-		case PieceTypeRook:
-			occ := b.Occupancy()
-			mask := magicRook.masks[sq]
-			index := compress(occ, mask)
-			for _, target := range magicRook.attacks[sq][index].Squares() {
-				enemyPiece := b.Pieces[target]
-				enemyColor := enemyPiece.Color()
-				if enemyPiece == PieceNone || enemyColor != color {
-					moves = append(moves, Move{From: Position(sq), To: Position(target)})
-				}
+		}
+	}
+
+	queens := b.PieceBitboards[myColor][PieceTypeQueen - 1]
+	for _, sq := range queens.Squares() {
+		mask := magicQueen.masks[sq]
+		index := compress(occupied, mask)
+		for _, target := range magicQueen.attacks[sq][index].Squares() {
+			if (myPieces>>target)&1 == 0 {
+				moves = append(moves, Move{From: Position(sq), To: Position(target)})
 			}
-		case PieceTypeQueen:
-			occ := b.Occupancy()
-			mask := magicQueen.masks[sq]
-			index := compress(occ, mask)
-			for _, target := range magicQueen.attacks[sq][index].Squares() {
-				enemyPiece := b.Pieces[target]
-				enemyColor := enemyPiece.Color()
-				if enemyPiece == PieceNone || enemyColor != color {
-					moves = append(moves, Move{From: Position(sq), To: Position(target)})
-				}
-			}
-		case PieceTypeKing:
-			for _, target := range kingAttacks[sq].Squares() {
-				enemyPiece := b.Pieces[target]
-				enemyColor := enemyPiece.Color()
-				if enemyPiece == PieceNone || enemyColor != color {
-					moves = append(moves, Move{From: Position(sq), To: Position(target)})
-				}
+		}
+	}
+
+	king := b.PieceBitboards[myColor][PieceTypeKing - 1]
+	for _, sq := range king.Squares() {
+		for _, target := range kingAttacks[sq].Squares() {
+			if (myPieces>>target)&1 == 0 {
+				moves = append(moves, Move{From: Position(sq), To: Position(target)})
 			}
 		}
 	}
@@ -190,12 +189,8 @@ func (b *Board) generatePseudoLegalMoves() []Move {
 	return moves
 }
 
-func (b *Board) Occupancy() Bitboard {
-	return 01
-}
-
-func rankOf(sq int) int { return sq >> 3 }
-func fileOf(sq int) int { return sq & 7 }
+func rankOf(sq uint8) uint8 { return sq >> 3 }
+func fileOf(sq uint8) uint8 { return sq & 7 }
 
 func compress(occ, mask Bitboard) int {
 	index := 0
@@ -228,8 +223,8 @@ func decompress(index int, mask Bitboard) Bitboard {
 
 func computeMask(sq int, directions []Direction) Bitboard {
 	var mask Bitboard
-	rank := rankOf(sq)
-	file := fileOf(sq)
+	rank := int(rankOf(uint8(sq)))
+	file := int(fileOf(uint8(sq)))
 	for _, d := range directions {
 		r, f := rank, file
 		for {
@@ -247,8 +242,8 @@ func computeMask(sq int, directions []Direction) Bitboard {
 
 func computeSlidingSet(sq int, block Bitboard, directions []Direction) Bitboard {
 	var attacks Bitboard
-	rank := rankOf(sq)
-	file := fileOf(sq)
+	rank := int(rankOf(uint8(sq)))
+	file := int(fileOf(uint8(sq)))
 	for _, d := range directions {
 		r, f := rank, file
 		for {
@@ -293,11 +288,11 @@ func computeKnightAttacks() [64]Bitboard {
 		{1, 2}, {1, -2}, {-1, 2}, {-1, -2},
 	}
 	for sq := range 64 {
-		rank := rankOf(sq)
-		file := fileOf(sq)
+		rank := rankOf(uint8(sq))
+		file := fileOf(uint8(sq))
 		for _, o := range offsets {
-			r := rank + o[0]
-			f := file + o[1]
+			r := int(rank) + o[0]
+			f := int(file) + o[1]
 			if r >= 0 && r < 8 && f >= 0 && f < 8 {
 					knightAttacks[sq] |= 1 << (r*8 + f)
 			}
@@ -309,15 +304,15 @@ func computeKnightAttacks() [64]Bitboard {
 func computeKingAttacks() [64]Bitboard {
 	kingAttacks := [64]Bitboard{}
 	for sq := range 64 {
-		rank := rankOf(sq)
-		file := fileOf(sq)
+		rank := rankOf(uint8(sq))
+		file := fileOf(uint8(sq))
 		for dr := -1; dr <= 1; dr++ {
 			for df := -1; df <= 1; df++ {
 				if dr == 0 && df == 0 {
 					continue
 				}
-				r := rank + dr
-				f := file + df
+				r := int(rank) + dr
+				f := int(file) + df
 				if r >= 0 && r < 8 && f >= 0 && f < 8 {
 					kingAttacks[sq] |= 1 << (r*8 + f)
 				}
@@ -330,8 +325,8 @@ func computeKingAttacks() [64]Bitboard {
 func computePawnAttacks() [2][64]Bitboard {
 	pawnAttacks := [2][64]Bitboard{}
 	for sq := range 64 {
-		r := rankOf(sq)
-		f := fileOf(sq)
+		r := int(rankOf(uint8(sq)))
+		f := int(fileOf(uint8(sq)))
 
 		// White pawns attack diagonally up
 		if r+1 < 8 && f-1 >= 0 {
