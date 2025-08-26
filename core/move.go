@@ -1,11 +1,15 @@
 package core
 
 import (
-	"slices"
 	"fmt"
+	"log"
+	"slices"
 )
 
 var (
+	RookDirections = []Direction{ {1, 0}, {-1, 0}, {0, 1}, {0, -1} }
+	BishopDirections = []Direction{ {1, 1}, {1, -1}, {-1, 1}, {-1, -1} }
+
 	slidingRook 		= NewSlidingPiece([]Direction{ {1, 0}, {-1, 0}, {0, 1}, {0, -1} }, rookMagics, rookShifts)
 	slidingBishop 	= NewSlidingPiece([]Direction{ {1, 1}, {1, -1}, {-1, 1}, {-1, -1} }, bishopMagics, bishopShifts)
 
@@ -153,7 +157,6 @@ func (b *Board) GenerateLegalMoves() []Move {
 			for attacks != 0 {
 				to := Position(attacks.PopLSB())
 				moves = append(moves, Move{ From: sq, To: to })
-				fmt.Println("Queen move from", sq, "to", to)
 			}
 		}
 	}
@@ -166,9 +169,23 @@ func computeAttacks(sq Position, directions []Direction, interiorMask Bitboard, 
 	lookupSize := 1 << bitsN
 	table := make([]Bitboard, lookupSize)
 	blockers := computeBlockers(interiorMask)
+
+	seen := make(map[Bitboard]bool)
+	for _, b := range blockers {
+		if seen[b] {
+			log.Fatalf("Duplicate blocker pattern detected for square %d", sq)
+		}
+		seen[b] = true
+	}
+
 	for _, blocker := range blockers {
 		index := (blocker * magic) >> shift
 		moves := computeLegalMoves(sq, blocker, directions)
+
+		if table[index] != 0 && table[index] != moves {
+			log.Fatalf("Collision detected for square %d at index %d", sq, index)
+		}
+
 		table[index] = moves
 	}
 	return table
@@ -180,8 +197,10 @@ func computeLegalMoves(sq Position, blockers Bitboard, directions []Direction) B
 	for _, d := range directions {
 		dr, df := d.dr, d.df
 		for step := 1; step < 8; step++ {
+			rank := int(sq >> 3) + step * dr
+			file := int(sq & 7) + step * df
 			coord := int(sq) + step * (dr * 8 + df)
-			if coord < 0 || coord >= 64 {
+			if rank < 0 || rank > 7 || file < 0 || file > 7 {
 				break
 			}
 			bitboard |= 1 << coord
@@ -193,37 +212,41 @@ func computeLegalMoves(sq Position, blockers Bitboard, directions []Direction) B
 	return bitboard
 }
 
-// I still don't entirely understand this voodoo shit
 func computeBlockers(mask Bitboard) []Bitboard {
-	moves := []int{}
-
+	squares := []int{}
 	for i := range 64 {
-		if ((mask >> i) & 1) == 1 {
-			moves = append(moves, i)
+		if (mask>>i)&1 != 0 {
+			squares = append(squares, i)
 		}
 	}
 
-	patterns := 1 << len(moves)
-	attacks := make([]Bitboard, patterns)
+	numSquares := len(squares)
+	numPatterns := 1 << numSquares
+	blockers := make([]Bitboard, numPatterns)
 
-	for pattern := range patterns {
-		for bit := range len(moves) {
-			bit := (pattern >> bit) & 1
-			attacks[pattern] |= Bitboard(bit << moves[bit])
+	for pattern := range numPatterns {
+		var bb Bitboard = 0
+		for i, sq := range squares {
+			if (pattern>>i)&1 != 0 {
+				bb |= 1 << sq
+			}
 		}
+		blockers[pattern] = bb
 	}
 
-	return attacks
+	return blockers
 }
+
 
 func computeInteriorMask(sq Position, directions []Direction) Bitboard {
 	var mask Bitboard = 0
 	for _, d := range directions {
 		delta := d.dr * 8 + d.df
 		for step := 1; step < 8; step++ {
-			coord := int(sq) + step * delta // TODO: check this? maybe it should be split by rank/file to prevent file wrapping
-			next := int(sq) + (step + 1) * delta
-			if next < 0 || next >= 64 {
+			nextRank := int(sq >> 3) + (step + 1) * d.dr
+			nextFile := int(sq & 7) + (step + 1) * d.df
+			coord := int(sq) + step * delta
+			if nextRank < 0 || nextRank > 7 || nextFile < 0 || nextFile > 7 {
 				break
 			}
 			mask |= 1 << coord
@@ -324,4 +347,10 @@ func (b *Board) GetSlidingAttacks(sp *SlidingPiece, sq int) Bitboard {
 	index := (occ * sp.magic[sq]) >> sp.shifts[sq]
 	result := sp.attacks[sq][index]
 	return result
+}
+
+func MoveTest() {
+	mask := computeInteriorMask(17, BishopDirections)
+	blockers := computeBlockers(mask)
+	fmt.Printf("Blocker: %d\n", blockers[7])
 }

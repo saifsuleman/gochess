@@ -1,6 +1,7 @@
 package main
 
 import (
+	"gochess/core"
 	"gochess/game"
 	"log"
 
@@ -8,6 +9,8 @@ import (
 )
 
 func main() {
+	core.MoveTest()
+
 	game.Init()
 	game := game.NewGame()
 	ebiten.SetWindowTitle("hi")
