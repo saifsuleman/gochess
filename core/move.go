@@ -75,15 +75,7 @@ func (b *Board) GenerateLegalMoves() []Move {
 			king = Position(b.PieceBitboards[1][PieceTypeKing - 1].LSB())
 		}
 
-		enemyMoves := b.GeneratePseudoLegalMoves()
-		inCheck := false
-
-		for _, emove := range enemyMoves {
-			if emove.To == king {
-				inCheck = true
-				break
-			}
-		}
+		inCheck := b.IsSquareAttacked(king, !white)
 
 		b.Pop()
 
@@ -395,8 +387,54 @@ func (b *Board) GetSlidingAttacks(sp *SlidingPiece, sq int) Bitboard {
 	return result
 }
 
-func MoveTest() {
-	mask := computeInteriorMask(17, BishopDirections)
-	blockers := computeBlockers(mask)
-	fmt.Printf("Blocker: %d\n", blockers[7])
+func (b *Board) IsSquareAttacked(sq Position, byWhite bool) bool {
+	byWhiteIndex := 0
+	if !byWhite {
+		byWhiteIndex = 1
+	}
+
+	var enemyBitboard Bitboard
+	if byWhite {
+		enemyBitboard = b.WhitePieces
+	} else {
+		enemyBitboard = b.BlackPieces
+	}
+
+	// pawns
+	var pawnAttacks_ Bitboard
+	if byWhite {
+		pawnAttacks_ = pawnAttacks[0][sq] & enemyBitboard
+	} else {
+		pawnAttacks_ = pawnAttacks[1][sq] & enemyBitboard
+	}
+
+	if pawnAttacks_ != 0 {
+		return true
+	}
+
+	// knights
+	knightAttackers := knightAttacks[sq] & enemyBitboard & (b.PieceBitboards[byWhiteIndex][PieceTypeKnight - 1])
+	if knightAttackers != 0 {
+		return true
+	}
+
+	// kings
+	kingAttackers := kingAttacks[sq] & enemyBitboard & (b.PieceBitboards[byWhiteIndex][PieceTypeKing - 1])
+	if kingAttackers != 0 {
+		return true
+	}
+
+	// bishops / queens
+	bishopAttackers := b.GetSlidingAttacks(slidingBishop, int(sq)) & enemyBitboard & (b.PieceBitboards[byWhiteIndex][PieceTypeBishop - 1] | b.PieceBitboards[byWhiteIndex][PieceTypeQueen - 1])
+	if bishopAttackers != 0 {
+		return true
+	}
+
+	// rooks / queens
+	rookAttackers := b.GetSlidingAttacks(slidingRook, int(sq)) & enemyBitboard & (b.PieceBitboards[byWhiteIndex][PieceTypeRook - 1] | b.PieceBitboards[byWhiteIndex][PieceTypeQueen - 1])
+	if rookAttackers != 0 {
+		return true
+	}
+
+	return false
 }
