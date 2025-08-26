@@ -1,5 +1,10 @@
 package core
 
+import (
+	"fmt"
+	"log"
+)
+
 const (
 	CastlingRightsNone = 0b0000
 	CastlingWhiteKingside = 0b0001
@@ -69,7 +74,12 @@ func (b *Board) Push(move *Move) {
 	}
 
 	b.RemovePiece(from, piece)
-	b.AddPiece(to, piece)
+
+	if move.Promotion == PieceNone {
+		b.AddPiece(to, piece)
+	} else {
+		b.AddPiece(to, move.Promotion)
+	}
 
 	type_ := piece & PieceTypeMask
 	color := piece & PieceColorMask
@@ -78,11 +88,6 @@ func (b *Board) Push(move *Move) {
 
 	switch type_ {
 	case PieceTypePawn:
-		if move.Promotion != PieceNone {
-			b.RemovePiece(to, piece)
-			b.AddPiece(to, move.Promotion)
-		}
-
 		if color == PieceColorWhite && to - from == 7 && b.EnPassantTarget == to {
 			removedPiece := b.Pieces[b.EnPassantTarget - 8]
 			if removedPiece != PieceNone {
@@ -193,11 +198,10 @@ func (b *Board) Pop() {
 		b.AddPiece(to, captured)
 	}
 
-	b.AddPiece(from, piece)
-
-	if lastMove.Promotion != PieceNone {
-		b.RemovePiece(to, lastMove.Promotion)
-		b.AddPiece(from, piece) // Revert promotion
+	if lastMove.Promotion == PieceNone {
+		b.AddPiece(from, piece)
+	} else {
+		b.AddPiece(from, piece & PieceColorMask | PieceTypePawn) // Revert to pawn
 	}
 
 	type_ := piece & PieceTypeMask
@@ -237,6 +241,11 @@ func (b *Board) Pop() {
 }
 
 func (b *Board) RemovePiece(pos Position, piece Piece) {
+	if b.Pieces[pos] != piece {
+		log.Printf("Trying to remove piece %d at position %d, but found piece %d instead", piece, pos, b.Pieces[pos])
+		piece = b.Pieces[pos]
+	}
+
 	if pos >= 64 || piece == PieceNone {
 		return
 	}
@@ -257,6 +266,10 @@ func (b *Board) RemovePiece(pos Position, piece Piece) {
 }
 
 func (b *Board) AddPiece(pos Position, piece Piece) {
+	if pos == 7 {
+		fmt.Printf("Adding piece %d at position %d\n", piece, pos)
+	}
+
 	if pos >= 64 || piece == PieceNone {
 		return
 	}

@@ -15,6 +15,9 @@ var (
 	kingAttacks   = computeKingAttacks()
 	knightAttacks = computeKnightAttacks()
 	pawnAttacks	 = computePawnAttacks()
+
+	zeroOccupancyRookAttacks [64]Bitboard = computeFixedAttacks(slidingRook, 0)
+	zeroOccupancyBishopAttacks [64]Bitboard = computeFixedAttacks(slidingBishop, 0)
 )
 
 type SlidingPiece struct {
@@ -37,7 +40,7 @@ type Direction struct {
 
 // TODO: optimize later
 func (b *Board) IsMoveLegal(move Move) bool {
-	moves := b.GenerateLegalMoves()
+	moves := b.GeneratePseudoLegalMoves()
 	return slices.Contains(moves, move)
 }
 
@@ -85,8 +88,11 @@ func (b *Board) GenerateLegalMoves() []Move {
 	bishopCheckers := b.GetSlidingAttacks(slidingBishop, int(kingSq)) & (b.PieceBitboards[enemyBit][PieceTypeBishop - 1] | b.PieceBitboards[enemyBit][PieceTypeQueen - 1])
 	checkers := knightCheckers | pawnCheckers | rookCheckers | bishopCheckers
 	checkersN := checkers.PopCount()
-	rookLikePinners := b.GetSlidingAttacks(slidingRook, int(kingSq)) & (b.PieceBitboards[enemyBit][PieceTypeRook-1] | b.PieceBitboards[enemyBit][PieceTypeQueen-1])
-	bishopLikePinners := b.GetSlidingAttacks(slidingBishop, int(kingSq)) & (b.PieceBitboards[enemyBit][PieceTypeBishop-1] | b.PieceBitboards[enemyBit][PieceTypeQueen-1])
+
+	// This needs to operate under a hypothetical occupancy of 0
+	rookLikePinners := zeroOccupancyRookAttacks[kingSq] & (b.PieceBitboards[enemyBit][PieceTypeRook-1] | b.PieceBitboards[enemyBit][PieceTypeQueen-1])
+	bishopLikePinners := zeroOccupancyBishopAttacks[kingSq] & (b.PieceBitboards[enemyBit][PieceTypeBishop-1] | b.PieceBitboards[enemyBit][PieceTypeQueen-1])
+
 	pinners := rookLikePinners | bishopLikePinners
 	occ := b.AllPieces
 
@@ -131,6 +137,7 @@ func (b *Board) GenerateLegalMoves() []Move {
 	for _, move := range pseudoLegalMoves {
 		from, to := move.From, move.To
 		type_ := b.Pieces[from] & PieceTypeMask
+
 		if from == kingSq {
 			occ_ := (occ &^ (1 << from)) | (1 << to)
 
@@ -222,7 +229,6 @@ func betweenMask(a, b Position) Bitboard {
 		stepF = -1
 	}
 
-	// Must be aligned on rank/file/diagonal
 	if !(dr == 0 || df == 0 || abs(dr) == abs(df)) {
 		return 0
 	}
@@ -245,7 +251,6 @@ func betweenMask(a, b Position) Bitboard {
 	return mask
 }
 
-// getSlidingAttacksWithOcc: same as your GetSlidingAttacks but uses provided occupancy
 func getSlidingAttacksWithOcc(sp *SlidingPiece, sq int, occ Bitboard) Bitboard {
 	mask := sp.interiorMasks[sq]
 	occMasked := occ & mask
@@ -253,33 +258,28 @@ func getSlidingAttacksWithOcc(sp *SlidingPiece, sq int, occ Bitboard) Bitboard {
 	return sp.attacks[sq][index]
 }
 
-// squareIsAttackedUnderOcc: check whether `pos` is attacked by 'attackerIsWhite' side,
-// given arbitrary occupancy `occ` and explicit enemy piece bitboards in enemyPieces.
 func squareIsAttackedUnderOcc(pos Position, attackerIsWhite bool, occ Bitboard, enemyPieces *[6]Bitboard) bool {
-	// pawns: (use same indexing as your code: pawnAttacks[friendlyBit][pos] & enemyPawns)
 	var pawnIndex int
+
+	// pawn attacks are inverted because this is from the perspective of the king being attacked...
 	if attackerIsWhite {
-		pawnIndex = 0
-	} else {
 		pawnIndex = 1
+	} else {
+		pawnIndex = 0
 	}
 
-	// pawn attacks
 	if (pawnAttacks[pawnIndex][pos] & enemyPieces[PieceTypePawn-1]) != 0 {
 		return true
 	}
 
-	// knights
 	if (knightAttacks[pos] & enemyPieces[PieceTypeKnight-1]) != 0 {
 		return true
 	}
 
-	// kings
 	if (kingAttacks[pos] & enemyPieces[PieceTypeKing-1]) != 0 {
 		return true
 	}
 
-	// sliders
 	rookAtts := getSlidingAttacksWithOcc(slidingRook, int(pos), occ)
 	if (rookAtts & (enemyPieces[PieceTypeRook-1] | enemyPieces[PieceTypeQueen-1])) != 0 {
 		return true
@@ -356,9 +356,23 @@ func (b *Board) GeneratePseudoLegalMoves() []Move {
 			} else {
 				attacks = pawnAttacks[1][sq] & enemyBitboard
 			}
+
+			var promotionRank Position
+			if color == PieceColorWhite {
+				promotionRank = 6
+			} else {
+				promotionRank = 1
+			}
+
 			for attacks != 0 {
 				to := Position(attacks.PopLSB())
-				moves = append(moves, Move{ From: sq, To: to })
+				if (sq >> 3) == promotionRank {
+					for _, promoType := range []uint8{ PieceTypeQueen, PieceTypeRook, PieceTypeBishop, PieceTypeKnight } {
+						moves = append(moves, Move{ From: sq, To: to, Promotion: Piece(color | promoType) })
+					}
+				} else {
+					moves = append(moves, Move{ From: sq, To: to })
+				}
 			}
 
 			// single / double pushes
@@ -372,7 +386,16 @@ func (b *Board) GeneratePseudoLegalMoves() []Move {
 				startRank = 6
 			}
 
-			if (forward < 64) && ((b.AllPieces >> forward) & 1) == 0 {
+			if (sq >> 3) == promotionRank {
+				var promotionMoves []Move
+				for _, promoType := range []uint8{ PieceTypeQueen, PieceTypeRook, PieceTypeBishop, PieceTypeKnight } {
+					// forward promotion
+					if (forward < 64) && ((b.AllPieces >> forward) & 1) == 0 {
+						promotionMoves = append(promotionMoves, Move{ From: sq, To: forward, Promotion: Piece(color | promoType) })
+					}
+				}
+				moves = append(moves, promotionMoves...)
+			} else if (forward < 64) && ((b.AllPieces >> forward) & 1) == 0 {
 				moves = append(moves, Move{ From: sq, To: forward })
 				if (sq >> 3) == startRank {
 					doubleForward := forward + (forward - sq)
@@ -595,6 +618,14 @@ func computePawnAttacks() [2][64]Bitboard {
 	}
 
 	return bitboards
+}
+
+func computeFixedAttacks(sp *SlidingPiece, occ Bitboard) [64]Bitboard {
+	var attacks [64]Bitboard
+	for sq := range Position(64) {
+		attacks[sq] = getSlidingAttacksWithOcc(sp, int(sq), occ)
+	}
+	return attacks
 }
 
 func (b *Board) GetSlidingAttacks(sp *SlidingPiece, sq int) Bitboard {

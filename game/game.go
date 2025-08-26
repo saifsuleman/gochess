@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"gochess/core"
 	"gochess/engine"
 	"gochess/fen"
@@ -87,10 +88,17 @@ func (g *Game) Update() error {
 				g.prevMoveFrom = g.dragStart
 				g.prevMoveTo = toSquare
 
-				bestMove := g.engine.FindBestMove()
-				if bestMove != nil {
-					g.Board.Push(bestMove)
-				}
+				// bestMove := g.engine.FindBestMove()
+				// if bestMove != nil {
+				// 	g.Board.Push(bestMove)
+				// }
+			} else {
+				occW := ((g.Board.WhitePieces) >> move.To) & 1 == 1
+				occB := ((g.Board.BlackPieces) >> move.To) & 1 == 1
+				occA := ((g.Board.AllPieces) >> move.To) & 1 == 1
+				fmt.Println("white pieces occ:", occW)
+				fmt.Println("black pieces occ:", occB)
+				fmt.Println("all pieces occ:", occA)
 			}
 		}
 

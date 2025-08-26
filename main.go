@@ -12,8 +12,8 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-// const FEN = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
-var FEN = fen.DefaultFEN()
+const FEN = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
+// var FEN = fen.DefaultFEN()
 
 func sqToPen(sq core.Position) string {
 	rank := sq >> 3
@@ -34,7 +34,7 @@ func main() {
 		log.Fatal(err)
 	}
 	fn(chessGame)
-	countMovesAndTrack(board, chessGame, 3)
+	countMovesAndTrack(board, chessGame, 6)
 
 
 	start := time.Now()
@@ -44,13 +44,28 @@ func main() {
 	}
 }
 
-func FindChessMove(cg *chess.Game, from, to core.Position, moves []chess.Move) *chess.Move {
+func FindChessMove(cg *chess.Game, from, to core.Position, promotion core.Piece, moves []chess.Move) *chess.Move {
 	for _, m := range moves {
-		if sqToPen(from) == m.S1().String() && sqToPen(to) == m.S2().String() {
+		if sqToPen(from) == m.S1().String() && sqToPen(to) == m.S2().String() && promoEq(promotion, m.Promo()) {
 			return &m
 		}
 	}
 	return nil
+}
+
+func promoEq(p core.Piece, m chess.PieceType) bool {
+	switch (p & core.PieceTypeMask) {
+	case core.PieceTypeQueen:
+		return m == chess.Queen
+	case core.PieceTypeRook:
+		return m == chess.Rook
+	case core.PieceTypeBishop:
+		return m == chess.Bishop
+	case core.PieceTypeKnight:
+		return m == chess.Knight
+	default:
+		return m == chess.NoPieceType
+	}
 }
 
 func countMoves(board *core.Board, depth int) int {
@@ -74,31 +89,34 @@ func countMovesAndTrack(board *core.Board, cb *chess.Game, depth int) int {
 		return 1
 	}
 
+	fmt.Println("White to move", board.WhiteToMove, cb.Position().Turn() == chess.White)
+
 	moves := board.GenerateLegalMoves()
 	otherMoves := cb.ValidMoves()
 
 	if len(moves) != len(otherMoves) {
 		for _, m := range moves {
-			found := FindChessMove(cb, m.From, m.To, otherMoves) != nil
+			found := FindChessMove(cb, m.From, m.To, m.Promotion, otherMoves) != nil
 			if !found {
-				log.Printf("Extra move: %s -> %s (%s)\n", sqToPen(m.From), sqToPen(m.To), cb.FEN())
+				log.Printf("Extra move: %s -> %s (%s)\n", sqToPen(m.From), sqToPen(m.To), m.Promotion)
 			}
 		}
 
 		for _, m := range otherMoves {
 			found := false
 			for _, m2 := range moves {
-				if m.S1().String() == sqToPen(m2.From) && m.S2().String() == sqToPen(m2.To) {
+				if m.S1().String() == sqToPen(m2.From) && m.S2().String() == sqToPen(m2.To) && promoEq(m2.Promotion, m.Promo()) {
 					found = true
 					break
 				}
 			}
 			if !found {
-				log.Printf("Missing move: %s -> %s (%s)\n", m.S1().String(), m.S2().String(), cb.FEN())
+				log.Printf("Missing move: %s -> %s (%s) %s\n", m.S1().String(), m.S2().String(), m.Promo())
 			}
 		}
 
 		log.Printf("Move count mismatch: %d vs %d (%s)\n", len(moves), len(otherMoves), cb.FEN())
+
 		play(board)
 	}
 
@@ -108,7 +126,7 @@ func countMovesAndTrack(board *core.Board, cb *chess.Game, depth int) int {
 
 	totalMoves := 0
 	for _, move := range moves {
-		chessMove := FindChessMove(cb, move.From, move.To, otherMoves)
+		chessMove := FindChessMove(cb, move.From, move.To, move.Promotion, otherMoves)
 		if chessMove == nil {
 			log.Fatalf("Could not find move: %s -> %s (%s) .... %s\n", sqToPen(move.From), sqToPen(move.To), cb.FEN(), fen.BoardToFEN(board))
 		}
