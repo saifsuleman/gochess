@@ -1,5 +1,10 @@
 package engine
 
+const (
+	MateScore = 30000
+	MateThreshold = MateScore - 1000
+)
+
 func (e *Engine) negamax(depth int, alpha, beta int) int {
 	if depth == 0 {
 		return e.quiscence(alpha, beta)
@@ -9,7 +14,7 @@ func (e *Engine) negamax(depth int, alpha, beta int) int {
 	moves := board.GenerateLegalMoves()
 	if len(moves) == 0 {
 		if board.InCheck(board.WhiteToMove) {
-			return 30000 - depth
+			return MateScore - depth
 		}
 		return 0 // stalemate
 	}
