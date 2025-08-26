@@ -25,3 +25,7 @@ func (bb *Bitboard) PopLSB() int {
 func (bb *Bitboard) LSB() int {
 	return bits.TrailingZeros64(uint64(*bb))
 }
+
+func (bb *Bitboard) PopCount() int {
+	return bits.OnesCount64(uint64(*bb))
+}

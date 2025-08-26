@@ -61,30 +61,236 @@ func NewSlidingPiece(directions []Direction, magic [64]Bitboard, shifts [64]int)
 
 // TODO: this still needs heavy optimization with using bitmasks and stuff for check detection, pin detection, etc... right now it's kinda hacky
 func (b *Board) GenerateLegalMoves() []Move {
-	white := b.WhiteToMove
+	var friendlyBit int
+	var enemyBit int
+
+	if b.WhiteToMove {
+		friendlyBit = 0
+		enemyBit = 1
+	} else {
+		friendlyBit = 1
+		enemyBit = 0
+	}
+
 	pseudoLegalMoves := b.GeneratePseudoLegalMoves()
 	legalMoves := []Move{}
+	kingSq := b.KingSquare(b.WhiteToMove)
 
-	for _, move := range pseudoLegalMoves {
-		b.Push(&move)
+	if kingSq >= 64 {
+		return legalMoves
+	}
 
-		var king Position
-		if white {
-			king = Position(b.PieceBitboards[0][PieceTypeKing - 1].LSB())
-		} else {
-			king = Position(b.PieceBitboards[1][PieceTypeKing - 1].LSB())
-		}
+	knightCheckers := knightAttacks[kingSq] & b.PieceBitboards[enemyBit][PieceTypeKnight - 1]
+	pawnCheckers := pawnAttacks[friendlyBit][kingSq] & b.PieceBitboards[enemyBit][PieceTypePawn - 1]
+	rookCheckers := b.GetSlidingAttacks(slidingRook, int(kingSq)) & (b.PieceBitboards[enemyBit][PieceTypeRook - 1] | b.PieceBitboards[enemyBit][PieceTypeQueen - 1])
+	bishopCheckers := b.GetSlidingAttacks(slidingBishop, int(kingSq)) & (b.PieceBitboards[enemyBit][PieceTypeBishop - 1] | b.PieceBitboards[enemyBit][PieceTypeQueen - 1])
+	checkers := knightCheckers | pawnCheckers | rookCheckers | bishopCheckers
+	checkersN := checkers.PopCount()
+	rookLikePinners := b.GetSlidingAttacks(slidingRook, int(kingSq)) & (b.PieceBitboards[enemyBit][PieceTypeRook-1] | b.PieceBitboards[enemyBit][PieceTypeQueen-1])
+	bishopLikePinners := b.GetSlidingAttacks(slidingBishop, int(kingSq)) & (b.PieceBitboards[enemyBit][PieceTypeBishop-1] | b.PieceBitboards[enemyBit][PieceTypeQueen-1])
+	pinners := rookLikePinners | bishopLikePinners
+	occ := b.AllPieces
 
-		inCheck := b.IsSquareAttacked(king, !white)
+	var pinnedBB Bitboard = 0
+	var pinAllowedMask [64]Bitboard
 
-		b.Pop()
-
-		if !inCheck {
-			legalMoves = append(legalMoves, move)
+	for p := pinners; p != 0; {
+		pinnerSq := Position(p.PopLSB())
+		between := betweenMask(kingSq, pinnerSq)
+		blockers := between & occ
+		if blockers.PopCount() == 1 {
+			pinnedSq := Position(blockers.LSB())
+			isOurPiece := false
+			if friendlyBit == 0 {
+				isOurPiece = ((b.WhitePieces)>>pinnedSq)&1 == 1
+			} else {
+				isOurPiece = ((b.BlackPieces)>>pinnedSq)&1 == 1
+			}
+			if isOurPiece {
+				pinnedBB |= 1 << pinnedSq
+				pinAllowedMask[pinnedSq] = between | (1 << pinnerSq)
+			}
 		}
 	}
 
+	var checkMask Bitboard = 0
+	switch checkersN {
+	case 0:
+		checkMask = ^Bitboard(0)
+	case 1:
+		checkerSq := Position(checkers.LSB())
+		checkMask = (1 << checkerSq)
+		if rookCheckers != 0 || bishopCheckers != 0 {
+			checkMask |= betweenMask(kingSq, checkerSq)
+		}
+	default:
+		checkMask = 0
+	}
+
+	attackerIsWhite := !b.WhiteToMove
+
+	for _, move := range pseudoLegalMoves {
+		from, to := move.From, move.To
+		type_ := b.Pieces[from] & PieceTypeMask
+		if from == kingSq {
+			occ_ := (occ &^ (1 << from)) | (1 << to)
+
+			var enemyAfter [6]Bitboard
+			for i := range 6 {
+				enemyAfter[i] = b.PieceBitboards[enemyBit][i] &^ (1 << to)
+			}
+
+			if !squareIsAttackedUnderOcc(to, attackerIsWhite, occ_, &enemyAfter) {
+				legalMoves = append(legalMoves, move)
+			}
+
+			continue
+		}
+
+		if checkersN >= 2 {
+			continue
+		}
+
+		if (pinnedBB & (1 << from)) != 0 {
+			if pinAllowedMask[from] & (1 << to) == 0 {
+				continue
+			}
+		}
+
+		if checkersN == 1 {
+			if (checkMask & (1 << to)) == 0 {
+				continue
+			}
+		}
+
+		// special case here that i lost my mind over: en passant can reveal a check
+		if type_ == PieceTypePawn && to == b.EnPassantTarget {
+			var captureSq Position
+			if b.WhiteToMove {
+				captureSq = to - 8
+			} else {
+				captureSq = to + 8
+			}
+
+			occ_ := (occ &^ (1 << from) &^ (1 << captureSq)) | (1 << to)
+
+			var enemyAfter [6]Bitboard
+			for i := range 6 {
+				enemyAfter[i] = b.PieceBitboards[enemyBit][i]
+			}
+			enemyAfter[PieceTypePawn - 1] &^= 1 << captureSq
+
+			if squareIsAttackedUnderOcc(kingSq, attackerIsWhite, occ_, &enemyAfter) {
+				continue
+			}
+
+			legalMoves = append(legalMoves, move)
+			continue
+		}
+
+		legalMoves = append(legalMoves, move)
+	}
+
 	return legalMoves
+}
+
+func betweenMask(a, b Position) Bitboard {
+	if a == b {
+		return 0
+	}
+
+	ar := int(a >> 3)
+	af := int(a & 7)
+	br := int(b >> 3)
+	bf := int(b & 7)
+
+	dr := br - ar
+	df := bf - af
+
+	var stepR, stepF int
+	if dr == 0 {
+		stepR = 0
+	} else if dr > 0 {
+		stepR = 1
+	} else {
+		stepR = -1
+	}
+	if df == 0 {
+		stepF = 0
+	} else if df > 0 {
+		stepF = 1
+	} else {
+		stepF = -1
+	}
+
+	// Must be aligned on rank/file/diagonal
+	if !(dr == 0 || df == 0 || abs(dr) == abs(df)) {
+		return 0
+	}
+
+	var mask Bitboard = 0
+	step := 1
+	for {
+		r := ar + step*stepR
+		f := af + step*stepF
+		if r < 0 || r > 7 || f < 0 || f > 7 {
+			break
+		}
+		pos := Position(r*8 + f)
+		if pos == b {
+			break
+		}
+		mask |= Bitboard(1) << pos
+		step++
+	}
+	return mask
+}
+
+// getSlidingAttacksWithOcc: same as your GetSlidingAttacks but uses provided occupancy
+func getSlidingAttacksWithOcc(sp *SlidingPiece, sq int, occ Bitboard) Bitboard {
+	mask := sp.interiorMasks[sq]
+	occMasked := occ & mask
+	index := (occMasked * sp.magic[sq]) >> sp.shifts[sq]
+	return sp.attacks[sq][index]
+}
+
+// squareIsAttackedUnderOcc: check whether `pos` is attacked by 'attackerIsWhite' side,
+// given arbitrary occupancy `occ` and explicit enemy piece bitboards in enemyPieces.
+func squareIsAttackedUnderOcc(pos Position, attackerIsWhite bool, occ Bitboard, enemyPieces *[6]Bitboard) bool {
+	// pawns: (use same indexing as your code: pawnAttacks[friendlyBit][pos] & enemyPawns)
+	var pawnIndex int
+	if attackerIsWhite {
+		pawnIndex = 0
+	} else {
+		pawnIndex = 1
+	}
+
+	// pawn attacks
+	if (pawnAttacks[pawnIndex][pos] & enemyPieces[PieceTypePawn-1]) != 0 {
+		return true
+	}
+
+	// knights
+	if (knightAttacks[pos] & enemyPieces[PieceTypeKnight-1]) != 0 {
+		return true
+	}
+
+	// kings
+	if (kingAttacks[pos] & enemyPieces[PieceTypeKing-1]) != 0 {
+		return true
+	}
+
+	// sliders
+	rookAtts := getSlidingAttacksWithOcc(slidingRook, int(pos), occ)
+	if (rookAtts & (enemyPieces[PieceTypeRook-1] | enemyPieces[PieceTypeQueen-1])) != 0 {
+		return true
+	}
+	bishopAtts := getSlidingAttacksWithOcc(slidingBishop, int(pos), occ)
+	if (bishopAtts & (enemyPieces[PieceTypeBishop-1] | enemyPieces[PieceTypeQueen-1])) != 0 {
+		return true
+	}
+
+	return false
 }
 
 func (b *Board) GeneratePseudoLegalMoves() []Move {
@@ -400,8 +606,7 @@ func (b *Board) GetSlidingAttacks(sp *SlidingPiece, sq int) Bitboard {
 	return result
 }
 
-// TODO: fix this god awful fucking function this shit is so cursed
-func (b *Board) IsSquareAttacked(pos Position, byWhite bool) bool {
+func (b *Board) GetAttackingBitboard(pos Position, byWhite bool) Bitboard {
 	var attacking Bitboard = 0
 	var enemyPieces Bitboard
 	if byWhite {
@@ -444,5 +649,21 @@ func (b *Board) IsSquareAttacked(pos Position, byWhite bool) bool {
 		}
 	}
 
-	return (attacking>>pos)&1 == 1
+	return attacking
+}
+
+// TODO: fix this god awful fucking function this shit is so cursed
+func (b *Board) IsSquareAttacked(pos Position, byWhite bool) bool {
+	attacking := b.GetAttackingBitboard(pos, byWhite)
+	return (attacking & (1 << pos)) != 0
+}
+
+func (b *Board) KingSquare(white bool) Position {
+	var board Bitboard
+	if white {
+		board = b.PieceBitboards[0][PieceTypeKing - 1]
+	} else {
+		board = b.PieceBitboards[1][PieceTypeKing - 1]
+	}
+	return Position(board.LSB())
 }

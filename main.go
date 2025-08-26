@@ -1,16 +1,19 @@
 package main
 
 import (
+	"fmt"
 	"gochess/core"
 	"gochess/fen"
 	"gochess/game"
 	"log"
+	"time"
 
 	"github.com/corentings/chess/v2"
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-const FEN = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
+// const FEN = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
+var FEN = fen.DefaultFEN()
 
 func sqToPen(sq core.Position) string {
 	rank := sq >> 3
@@ -19,24 +22,26 @@ func sqToPen(sq core.Position) string {
 }
 
 func main() {
-	board, err := fen.LoadFromFEN(fen.DefaultFEN())
+	board, err := fen.LoadFromFEN(FEN)
 	if err != nil {
 		log.Fatal(err)
 	}
-	play(board)
+	// play(board)
 
-	// chessGame := chess.NewGame()
-	// fn, err := chess.FEN(FEN)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// fn(chessGame)
-	// countMovesAndTrack(board, chessGame, 3)
-	//
-	// for depth := range 10 {
-	// 	moves := countMoves(board, depth)
-	// 	fmt.Printf("Depth %d: %d moves\n", depth, moves)
-	// }
+	chessGame := chess.NewGame()
+	fn, err := chess.FEN(FEN)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fn(chessGame)
+	countMovesAndTrack(board, chessGame, 3)
+
+
+	start := time.Now()
+	for depth := range 10 {
+		moves := countMoves(board, depth)
+		fmt.Printf("Depth %d: %d moves... elapsed: %s\n", depth, moves, time.Since(start))
+	}
 }
 
 func FindChessMove(cg *chess.Game, from, to core.Position, moves []chess.Move) *chess.Move {
