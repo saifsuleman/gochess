@@ -59,7 +59,6 @@ func NewSlidingPiece(directions []Direction, magic [64]Bitboard, shifts [64]int)
 	}
 }
 
-// TODO: this still needs heavy optimization with using bitmasks and stuff for check detection, pin detection, etc... right now it's kinda hacky
 func (b *Board) GenerateLegalMoves() []Move {
 	var friendlyBit int
 	var enemyBit int
