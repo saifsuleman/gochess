@@ -605,6 +605,7 @@ func (b *Board) GetSlidingAttacks(sp *SlidingPiece, sq int) Bitboard {
 	return result
 }
 
+// TODO: remove these shitty functions with something better
 func (b *Board) GetAttackingBitboard(pos Position, byWhite bool) Bitboard {
 	var attacking Bitboard = 0
 	var enemyPieces Bitboard
@@ -651,7 +652,6 @@ func (b *Board) GetAttackingBitboard(pos Position, byWhite bool) Bitboard {
 	return attacking
 }
 
-// TODO: fix this god awful fucking function this shit is so cursed
 func (b *Board) IsSquareAttacked(pos Position, byWhite bool) bool {
 	attacking := b.GetAttackingBitboard(pos, byWhite)
 	return (attacking & (1 << pos)) != 0
