@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"runtime/debug"
 )
 
 const (
@@ -35,6 +36,8 @@ type Board struct {
 	EnPassantTarget Position
 	CastlingRights uint8
 	MoveHistory []MoveHistoryEntry
+
+	OnPanic func(v string)
 }
 
 func NewBoard() *Board {
@@ -48,6 +51,7 @@ func NewBoard() *Board {
         CastlingRights:   CastlingWhiteKingside | CastlingWhiteQueenside |
                           CastlingBlackKingside | CastlingBlackQueenside,
 				MoveHistory:      []MoveHistoryEntry{},
+				OnPanic: 	nil,
     }
 }
 
@@ -99,7 +103,7 @@ func (b *Board) Push(move *Move) {
 
 	type_ := piece & PieceTypeMask
 	color := piece & PieceColorMask
-	var enPassantTarget Position
+	var enPassantTarget Position = 64
 	isEnPassant := false
 
 	switch type_ {
@@ -258,7 +262,13 @@ func (b *Board) Pop() {
 
 func (b *Board) RemovePiece(pos Position, piece Piece) {
 	if b.Pieces[pos] != piece {
-		panic(fmt.Sprintf("Trying to remove piece %d at position %d, but found piece %d instead", piece, pos, b.Pieces[pos]))
+		msg := fmt.Sprintf("Trying to remove piece %d at position %d, but found piece %d instead ... move history: ", piece, pos, b.Pieces[pos], len(b.MoveHistory))
+		if b.OnPanic != nil {
+			debug.PrintStack()
+			b.OnPanic(msg)
+		} else {
+			panic(msg)
+		}
 	}
 
 	if pos >= 64 || piece == PieceNone {

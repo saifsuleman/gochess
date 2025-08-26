@@ -200,6 +200,7 @@ func LoadFromFEN(fen string) (*core.Board, error) {
 
 	// 4. En passant target
 	board.EnPassantTarget = squareFromString(parts[3])
+	fmt.Printf("en passant target: %d\n", board.EnPassantTarget)
 
 	return board, nil
 }

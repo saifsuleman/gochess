@@ -40,7 +40,7 @@ type Direction struct {
 
 // TODO: optimize later
 func (b *Board) IsMoveLegal(move Move) bool {
-	moves := b.GeneratePseudoLegalMoves()
+	moves := b.GenerateLegalMoves()
 	return slices.Contains(moves, move)
 }
 

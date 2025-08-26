@@ -12,8 +12,8 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
-const FEN = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
 // var FEN = fen.DefaultFEN()
+const FEN = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
 
 func sqToPen(sq core.Position) string {
 	rank := sq >> 3
@@ -28,13 +28,18 @@ func main() {
 	}
 	// play(board)
 
-	chessGame := chess.NewGame()
-	fn, err := chess.FEN(FEN)
-	if err != nil {
-		log.Fatal(err)
+	board.OnPanic = func(msg string) {
+		fmt.Println(msg)
+		play(board)
 	}
-	fn(chessGame)
-	countMovesAndTrack(board, chessGame, 6)
+
+	// chessGame := chess.NewGame()
+	// fn, err := chess.FEN(FEN)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// fn(chessGame)
+	// countMovesAndTrack(board, chessGame, 6)
 
 	start := time.Now()
 	for depth := range 10 {
@@ -80,6 +85,7 @@ func countMoves(board *core.Board, depth int) int {
 		totalN += n
 		board.Pop()
 	}
+
 	return totalN
 }
 
@@ -113,6 +119,8 @@ func countMovesAndTrack(board *core.Board, cb *chess.Game, depth int) int {
 		}
 
 		log.Printf("Move count mismatch: %d vs %d (%s)\n", len(moves), len(otherMoves), cb.FEN())
+
+		log.Println(board.EnPassantTarget)
 
 		play(board)
 	}
