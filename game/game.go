@@ -88,10 +88,13 @@ func (g *Game) Update() error {
 				g.prevMoveFrom = g.dragStart
 				g.prevMoveTo = toSquare
 
-				// bestMove := g.engine.FindBestMove()
-				// if bestMove != nil {
-				// 	g.Board.Push(bestMove)
-				// }
+				go (func() {
+					g.engine.Board = g.Board.Clone()
+					bestMove := g.engine.FindBestMove()
+					if bestMove != nil {
+						g.Board.Push(bestMove)
+					}
+				})()
 			} else {
 				occW := ((g.Board.WhitePieces) >> move.To) & 1 == 1
 				occB := ((g.Board.BlackPieces) >> move.To) & 1 == 1

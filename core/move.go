@@ -62,7 +62,35 @@ func NewSlidingPiece(directions []Direction, magic [64]Bitboard, shifts [64]int)
 	}
 }
 
+func (b *Board) InCheck(white bool) bool {
+	kingSq := b.KingSquare(white)
+	if kingSq >= 64 {
+		return false
+	}
+	attackerIsWhite := !white
+	attacking := b.GetAttackingBitboard(kingSq, attackerIsWhite)
+	return (attacking & (1 << kingSq)) != 0
+}
+
+func (b *Board) GenerateLegalCaptures() []Move {
+	pseudoLegalMoves := b.GeneratePseudoLegalMoves()
+	captures := []Move{}
+	for _, move := range pseudoLegalMoves {
+		if (b.AllPieces & (1 << move.To)) != 0 {
+			captures = append(captures, move)
+		}
+	}
+	legalCaptures := b.FilterLegality(captures)
+	return legalCaptures
+}
+
 func (b *Board) GenerateLegalMoves() []Move {
+	pseudoLegalMoves := b.GeneratePseudoLegalMoves()
+	legalMoves := b.FilterLegality(pseudoLegalMoves)
+	return legalMoves
+}
+
+func (b *Board) FilterLegality(pseudoLegalMoves []Move) []Move {
 	var friendlyBit int
 	var enemyBit int
 
@@ -74,7 +102,6 @@ func (b *Board) GenerateLegalMoves() []Move {
 		enemyBit = 0
 	}
 
-	pseudoLegalMoves := b.GeneratePseudoLegalMoves()
 	legalMoves := []Move{}
 	kingSq := b.KingSquare(b.WhiteToMove)
 

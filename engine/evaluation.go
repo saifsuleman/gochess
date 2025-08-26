@@ -4,12 +4,12 @@ import (
 	"gochess/core"
 )
 
-func (e *Engine) Evaluate() int {
+func (e *Engine) Evaluate(sign int) int {
 	score := 0
-	mask := e.board.AllPieces
+	mask := e.Board.AllPieces
 	for mask != 0 {
 		lsb := mask.PopLSB()
-		piece := e.board.Pieces[lsb]
+		piece := e.Board.Pieces[lsb]
 		value := e.PieceValue(piece)
 		if piece.Color() == core.PieceColorWhite {
 			score += value
@@ -17,7 +17,7 @@ func (e *Engine) Evaluate() int {
 			score -= value
 		}
 	}
-	return score
+	return score * sign
 }
 
 func (e *Engine) PieceValue(piece core.Piece) int {

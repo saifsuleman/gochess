@@ -1,7 +1,7 @@
 package core
 
 import (
-	"fmt"
+	"log"
 	"runtime/debug"
 )
 
@@ -36,8 +36,6 @@ type Board struct {
 	EnPassantTarget Position
 	CastlingRights uint8
 	MoveHistory []MoveHistoryEntry
-
-	OnPanic func(v string)
 }
 
 func NewBoard() *Board {
@@ -51,7 +49,6 @@ func NewBoard() *Board {
         CastlingRights:   CastlingWhiteKingside | CastlingWhiteQueenside |
                           CastlingBlackKingside | CastlingBlackQueenside,
 				MoveHistory:      []MoveHistoryEntry{},
-				OnPanic: 	nil,
     }
 }
 
@@ -262,13 +259,8 @@ func (b *Board) Pop() {
 
 func (b *Board) RemovePiece(pos Position, piece Piece) {
 	if b.Pieces[pos] != piece {
-		msg := fmt.Sprintf("Trying to remove piece %d at position %d, but found piece %d instead ... move history: ", piece, pos, b.Pieces[pos], len(b.MoveHistory))
-		if b.OnPanic != nil {
-			debug.PrintStack()
-			b.OnPanic(msg)
-		} else {
-			panic(msg)
-		}
+		log.Printf("Tried to remove piece %v at position %d, but found %v instead\nStack trace:\n%s", piece, pos, b.Pieces[pos], debug.Stack())
+		piece = b.Pieces[pos]
 	}
 
 	if pos >= 64 || piece == PieceNone {
@@ -347,4 +339,19 @@ func (b *Board) ToAlgebraNotation(move Move) string {
 		}
 	}
 	return string(s)
+}
+
+func (b *Board) Clone() *Board {
+	clone := NewBoard()
+	copy(clone.Pieces[:], b.Pieces[:])
+	copy(clone.PieceBitboards[:], b.PieceBitboards[:])
+	clone.AllPieces = b.AllPieces
+	clone.WhitePieces = b.WhitePieces
+	clone.BlackPieces = b.BlackPieces
+	clone.WhiteToMove = b.WhiteToMove
+	clone.EnPassantTarget = b.EnPassantTarget
+	clone.CastlingRights = b.CastlingRights
+	clone.MoveHistory = make([]MoveHistoryEntry, len(b.MoveHistory))
+	copy(clone.MoveHistory, b.MoveHistory)
+	return clone
 }

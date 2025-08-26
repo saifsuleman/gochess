@@ -1,9 +1,10 @@
 package engine
 
 import (
+	"fmt"
 	"gochess/core"
 	"math"
-	"math/rand"
+	"time"
 )
 
 /*
@@ -23,38 +24,40 @@ TODO:
 */
 
 type Engine struct {
-	board *core.Board
+	Board *core.Board
 }
 
 func NewEngine(board *core.Board) *Engine {
-	return &Engine{board: board}
+	return &Engine{Board: board}
 }
 
 func (e *Engine) FindBestMove() *core.Move {
-	moves := e.board.GenerateLegalMoves()
+	start := time.Now()
+
+	moves := e.Board.GenerateLegalMoves()
 	if len(moves) == 0 {
 		return nil
 	}
 
+	e.OrderMoves(moves)
+
 	bestMove := moves[0]
 	bestValue := math.MinInt
-	depth := 3
-
-	// Shuffle moves to introduce some randomness
-	rand.Shuffle(len(moves), func(i, j int) {
-		moves[i], moves[j] = moves[j], moves[i]
-	})
+	depth := 5
 
 	for _, move := range moves {
-		e.board.Push(&move)
-		moveValue := e.alphaBeta(e.board, depth-1, math.MinInt, math.MaxInt, false)
-		e.board.Pop()
+		e.Board.Push(&move)
+		moveValue := -e.negamax(depth-1, math.MinInt, math.MaxInt)
+		e.Board.Pop()
 
 		if moveValue > bestValue {
 			bestValue = moveValue
 			bestMove = move
 		}
 	}
+
+	elapsed := time.Since(start)
+	fmt.Printf("Best move: %v, Value: %d, Time taken: %s\n", bestMove, bestValue, elapsed)
 
 	return &bestMove
 }
