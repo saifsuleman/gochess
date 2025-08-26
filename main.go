@@ -36,7 +36,6 @@ func main() {
 	fn(chessGame)
 	countMovesAndTrack(board, chessGame, 6)
 
-
 	start := time.Now()
 	for depth := range 10 {
 		moves := countMoves(board, depth)
@@ -88,8 +87,6 @@ func countMovesAndTrack(board *core.Board, cb *chess.Game, depth int) int {
 	if depth == 0 {
 		return 1
 	}
-
-	fmt.Println("White to move", board.WhiteToMove, cb.Position().Turn() == chess.White)
 
 	moves := board.GenerateLegalMoves()
 	otherMoves := cb.ValidMoves()

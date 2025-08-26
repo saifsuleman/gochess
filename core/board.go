@@ -2,7 +2,6 @@ package core
 
 import (
 	"fmt"
-	"log"
 )
 
 const (
@@ -71,6 +70,23 @@ func (b *Board) Push(move *Move) {
 
 	if captured != PieceNone {
 		b.RemovePiece(to, captured)
+
+		switch captured {
+		case PieceWhiteRook:
+			switch to {
+			case 0:
+				b.CastlingRights &^= CastlingWhiteQueenside
+			case 7:
+				b.CastlingRights &^= CastlingWhiteKingside
+			}
+		case PieceBlackRook:
+			switch to {
+			case 56:
+				b.CastlingRights &^= CastlingBlackQueenside
+			case 63:
+				b.CastlingRights &^= CastlingBlackKingside
+			}
+		}
 	}
 
 	b.RemovePiece(from, piece)
@@ -125,19 +141,19 @@ func (b *Board) Push(move *Move) {
 		}
 	case PieceTypeKing:
 		// TODO: replace these weird if/else with something like a switch for a faster dispatch
-		if color == PieceColorWhite && from == 4 && to == 6 {
+		if color == PieceColorWhite && from == 4 && to == 6 && b.WhiteCanCastleKingside() {
 			b.RemovePiece(7, PieceWhiteRook)
 			b.AddPiece(5, PieceWhiteRook)
 			b.CastlingRights &^= CastlingWhiteKingside | CastlingWhiteQueenside
-		} else if color == PieceColorWhite && from == 4 && to == 2 {
+		} else if color == PieceColorWhite && from == 4 && to == 2 && b.WhiteCanCastleQueenside() {
 			b.RemovePiece(0, PieceWhiteRook)
 			b.AddPiece(3, PieceWhiteRook)
 			b.CastlingRights &^= CastlingWhiteQueenside | CastlingWhiteKingside
-		} else if color == PieceColorBlack && from == 60 && to == 62 {
+		} else if color == PieceColorBlack && from == 60 && to == 62 && b.BlackCanCastleKingside() {
 			b.RemovePiece(63, PieceBlackRook)
 			b.AddPiece(61, PieceBlackRook)
 			b.CastlingRights &^= CastlingBlackKingside | CastlingBlackQueenside
-		} else if color == PieceColorBlack && from == 60 && to == 58 {
+		} else if color == PieceColorBlack && from == 60 && to == 58 && b.BlackCanCastleQueenside() {
 			b.RemovePiece(56, PieceBlackRook)
 			b.AddPiece(59, PieceBlackRook)
 			b.CastlingRights &^= CastlingBlackQueenside | CastlingBlackKingside
@@ -242,8 +258,7 @@ func (b *Board) Pop() {
 
 func (b *Board) RemovePiece(pos Position, piece Piece) {
 	if b.Pieces[pos] != piece {
-		log.Printf("Trying to remove piece %d at position %d, but found piece %d instead", piece, pos, b.Pieces[pos])
-		piece = b.Pieces[pos]
+		panic(fmt.Sprintf("Trying to remove piece %d at position %d, but found piece %d instead", piece, pos, b.Pieces[pos]))
 	}
 
 	if pos >= 64 || piece == PieceNone {
@@ -266,10 +281,6 @@ func (b *Board) RemovePiece(pos Position, piece Piece) {
 }
 
 func (b *Board) AddPiece(pos Position, piece Piece) {
-	if pos == 7 {
-		fmt.Printf("Adding piece %d at position %d\n", piece, pos)
-	}
-
 	if pos >= 64 || piece == PieceNone {
 		return
 	}
