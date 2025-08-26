@@ -1,7 +1,6 @@
 package game
 
 import (
-	"fmt"
 	"gochess/core"
 	"gochess/engine"
 	"gochess/fen"
@@ -82,22 +81,16 @@ func (g *Game) Update() error {
 				Promotion: core.PieceNone, // Could add promotion UI later
 			}
 
-			fmt.Printf("black kingside: %v\n", g.Board.BlackCanCastleKingside())
-			fmt.Printf("white kingside: %v\n", g.Board.WhiteCanCastleKingside())
-			fmt.Printf("black queenside: %v\n", g.Board.BlackCanCastleQueenside())
-			fmt.Printf("white queenside: %v\n", g.Board.WhiteCanCastleQueenside())
-
 			if g.Board.IsMoveLegal(move) {
 				g.Board.Push(&move)
 
 				g.prevMoveFrom = g.dragStart
 				g.prevMoveTo = toSquare
 
-				// bestMove := g.engine.FindBestMove()
-				// if bestMove != nil {
-				// 	fmt.Printf("Engine plays %+v\n", bestMove)
-				// 	g.Board.Push(bestMove)
-				// }
+				bestMove := g.engine.FindBestMove()
+				if bestMove != nil {
+					g.Board.Push(bestMove)
+				}
 			}
 		}
 

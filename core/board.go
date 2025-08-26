@@ -55,6 +55,7 @@ func (b *Board) LastMove() *MoveHistoryEntry {
 	return &b.MoveHistory[len(b.MoveHistory)-1]
 }
 
+// Why are we pass
 func (b *Board) Push(move *Move) {
 	from := move.From
 	to := move.To

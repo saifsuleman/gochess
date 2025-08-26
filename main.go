@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"gochess/core"
 	"gochess/fen"
 	"gochess/game"
@@ -20,24 +19,24 @@ func sqToPen(sq core.Position) string {
 }
 
 func main() {
-	board, err := fen.LoadFromFEN(FEN)
+	board, err := fen.LoadFromFEN(fen.DefaultFEN())
 	if err != nil {
 		log.Fatal(err)
 	}
-	// play(board)
+	play(board)
 
-	chessGame := chess.NewGame()
-	fn, err := chess.FEN(FEN)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fn(chessGame)
-	countMovesAndTrack(board, chessGame, 3)
-
-	for depth := range 10 {
-		moves := countMoves(board, depth)
-		fmt.Printf("Depth %d: %d moves\n", depth, moves)
-	}
+	// chessGame := chess.NewGame()
+	// fn, err := chess.FEN(FEN)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// fn(chessGame)
+	// countMovesAndTrack(board, chessGame, 3)
+	//
+	// for depth := range 10 {
+	// 	moves := countMoves(board, depth)
+	// 	fmt.Printf("Depth %d: %d moves\n", depth, moves)
+	// }
 }
 
 func FindChessMove(cg *chess.Game, from, to core.Position, moves []chess.Move) *chess.Move {

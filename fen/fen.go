@@ -183,8 +183,6 @@ func LoadFromFEN(fen string) (*core.Board, error) {
 	board.CastlingRights = core.CastlingRightsNone
 	if parts[2] != "-" {
 		for _, ch := range parts[2] {
-			fmt.Println("yes applying some castling rights...")
-
 			switch ch {
 			case 'K':
 				board.CastlingRights |= core.CastlingWhiteKingside
@@ -202,8 +200,6 @@ func LoadFromFEN(fen string) (*core.Board, error) {
 
 	// 4. En passant target
 	board.EnPassantTarget = squareFromString(parts[3])
-
-	fmt.Println("new castling rights", board.CastlingRights)
 
 	return board, nil
 }
