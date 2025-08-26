@@ -22,12 +22,12 @@ func (e *Engine) MoveScore(move core.Move) (score int) {
 	attacker := e.Board.Pieces[move.From]
 	victim := e.Board.Pieces[move.To]
 
-	if (attacker & core.PieceTypeMask) == core.PieceTypePawn && move.To == e.Board.EnPassantTarget {
+	if (attacker&core.PieceTypeMask) == core.PieceTypePawn && move.To == e.Board.EnPassantTarget {
 		victim = core.PieceTypePawn | ^(attacker & core.PieceColorMask)
 	}
 
 	if victim != core.PieceNone {
-		score += 100 + 10 * e.PieceValue(victim) - e.PieceValue(attacker)
+		score += 100 + 10*e.PieceValue(victim) - e.PieceValue(attacker)
 	}
 
 	return score

@@ -38,7 +38,7 @@ func Init() {
 
 type Game struct {
 	Board        *core.Board
-	engine 			 *engine.Engine
+	engine       *engine.Engine
 	selected     int
 	dragging     bool
 	dragStart    int
@@ -65,8 +65,8 @@ func (g *Game) Update() error {
 		// Pick up piece
 		if !g.dragging && square != -1 && g.Board.Pieces[square] != core.PieceNone {
 			piece := g.Board.Pieces[square]
-			if (g.Board.WhiteToMove && piece.Color() == core.PieceColorWhite ||
-				(!g.Board.WhiteToMove && piece.Color() == core.PieceColorBlack)) {
+			if g.Board.WhiteToMove && piece.Color() == core.PieceColorWhite ||
+				(!g.Board.WhiteToMove && piece.Color() == core.PieceColorBlack) {
 				g.selected = square
 				g.dragStart = square
 				g.dragging = true
@@ -96,9 +96,9 @@ func (g *Game) Update() error {
 					}
 				})()
 			} else {
-				occW := ((g.Board.WhitePieces) >> move.To) & 1 == 1
-				occB := ((g.Board.BlackPieces) >> move.To) & 1 == 1
-				occA := ((g.Board.AllPieces) >> move.To) & 1 == 1
+				occW := ((g.Board.WhitePieces)>>move.To)&1 == 1
+				occB := ((g.Board.BlackPieces)>>move.To)&1 == 1
+				occA := ((g.Board.AllPieces)>>move.To)&1 == 1
 				fmt.Println("white pieces occ:", occW)
 				fmt.Println("black pieces occ:", occB)
 				fmt.Println("all pieces occ:", occA)
@@ -134,7 +134,6 @@ func (g *Game) Update() error {
 
 	return nil
 }
-
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	for y := 0; y < BOARD_SIZE; y++ {
@@ -178,7 +177,7 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (width, height int) {
 }
 
 func DrawPiece(screen *ebiten.Image, pieceID, x, y int) {
-	DrawPieceAtPixel(screen, pieceID, float64(x*TILE_SIZE) + TILE_SIZE/2, float64(y*TILE_SIZE) + TILE_SIZE/2)
+	DrawPieceAtPixel(screen, pieceID, float64(x*TILE_SIZE)+TILE_SIZE/2, float64(y*TILE_SIZE)+TILE_SIZE/2)
 }
 
 func DrawPieceAtPixel(screen *ebiten.Image, pieceID int, px, py float64) {
@@ -230,4 +229,3 @@ func pieceID(piece core.Piece) int {
 		return -1
 	}
 }
-

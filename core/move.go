@@ -6,26 +6,26 @@ import (
 )
 
 var (
-	RookDirections = []Direction{ {1, 0}, {-1, 0}, {0, 1}, {0, -1} }
-	BishopDirections = []Direction{ {1, 1}, {1, -1}, {-1, 1}, {-1, -1} }
+	RookDirections   = []Direction{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}
+	BishopDirections = []Direction{{1, 1}, {1, -1}, {-1, 1}, {-1, -1}}
 
-	slidingRook 		= NewSlidingPiece([]Direction{ {1, 0}, {-1, 0}, {0, 1}, {0, -1} }, rookMagics, rookShifts)
-	slidingBishop 	= NewSlidingPiece([]Direction{ {1, 1}, {1, -1}, {-1, 1}, {-1, -1} }, bishopMagics, bishopShifts)
+	slidingRook   = NewSlidingPiece([]Direction{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}, rookMagics, rookShifts)
+	slidingBishop = NewSlidingPiece([]Direction{{1, 1}, {1, -1}, {-1, 1}, {-1, -1}}, bishopMagics, bishopShifts)
 
 	kingAttacks   = computeKingAttacks()
 	knightAttacks = computeKnightAttacks()
-	pawnAttacks	 = computePawnAttacks()
+	pawnAttacks   = computePawnAttacks()
 
-	zeroOccupancyRookAttacks [64]Bitboard = computeFixedAttacks(slidingRook, 0)
+	zeroOccupancyRookAttacks   [64]Bitboard = computeFixedAttacks(slidingRook, 0)
 	zeroOccupancyBishopAttacks [64]Bitboard = computeFixedAttacks(slidingBishop, 0)
 )
 
 type SlidingPiece struct {
 	interiorMasks [64]Bitboard
-	magic [64]Bitboard
-	shifts [64]int
-	attacks [64][]Bitboard
-	directions []Direction
+	magic         [64]Bitboard
+	shifts        [64]int
+	attacks       [64][]Bitboard
+	directions    []Direction
 }
 
 type Move struct {
@@ -54,11 +54,11 @@ func NewSlidingPiece(directions []Direction, magic [64]Bitboard, shifts [64]int)
 	}
 
 	return &SlidingPiece{
-		directions: directions,
-		magic: magic,
-		shifts: shifts,
+		directions:    directions,
+		magic:         magic,
+		shifts:        shifts,
 		interiorMasks: interiorMasks,
-		attacks: attacks,
+		attacks:       attacks,
 	}
 }
 
@@ -109,10 +109,10 @@ func (b *Board) FilterLegality(pseudoLegalMoves []Move) []Move {
 		return legalMoves
 	}
 
-	knightCheckers := knightAttacks[kingSq] & b.PieceBitboards[enemyBit][PieceTypeKnight - 1]
-	pawnCheckers := pawnAttacks[friendlyBit][kingSq] & b.PieceBitboards[enemyBit][PieceTypePawn - 1]
-	rookCheckers := b.GetSlidingAttacks(slidingRook, int(kingSq)) & (b.PieceBitboards[enemyBit][PieceTypeRook - 1] | b.PieceBitboards[enemyBit][PieceTypeQueen - 1])
-	bishopCheckers := b.GetSlidingAttacks(slidingBishop, int(kingSq)) & (b.PieceBitboards[enemyBit][PieceTypeBishop - 1] | b.PieceBitboards[enemyBit][PieceTypeQueen - 1])
+	knightCheckers := knightAttacks[kingSq] & b.PieceBitboards[enemyBit][PieceTypeKnight-1]
+	pawnCheckers := pawnAttacks[friendlyBit][kingSq] & b.PieceBitboards[enemyBit][PieceTypePawn-1]
+	rookCheckers := b.GetSlidingAttacks(slidingRook, int(kingSq)) & (b.PieceBitboards[enemyBit][PieceTypeRook-1] | b.PieceBitboards[enemyBit][PieceTypeQueen-1])
+	bishopCheckers := b.GetSlidingAttacks(slidingBishop, int(kingSq)) & (b.PieceBitboards[enemyBit][PieceTypeBishop-1] | b.PieceBitboards[enemyBit][PieceTypeQueen-1])
 	checkers := knightCheckers | pawnCheckers | rookCheckers | bishopCheckers
 	checkersN := checkers.PopCount()
 
@@ -185,7 +185,7 @@ func (b *Board) FilterLegality(pseudoLegalMoves []Move) []Move {
 		}
 
 		if (pinnedBB & (1 << from)) != 0 {
-			if pinAllowedMask[from] & (1 << to) == 0 {
+			if pinAllowedMask[from]&(1<<to) == 0 {
 				continue
 			}
 		}
@@ -211,7 +211,7 @@ func (b *Board) FilterLegality(pseudoLegalMoves []Move) []Move {
 			for i := range 6 {
 				enemyAfter[i] = b.PieceBitboards[enemyBit][i]
 			}
-			enemyAfter[PieceTypePawn - 1] &^= 1 << captureSq
+			enemyAfter[PieceTypePawn-1] &^= 1 << captureSq
 
 			if squareIsAttackedUnderOcc(kingSq, attackerIsWhite, occ_, &enemyAfter) {
 				continue
@@ -344,36 +344,36 @@ func (b *Board) GeneratePseudoLegalMoves() []Move {
 			attacks := knightAttacks[sq] & ^ourBitboard
 			for attacks != 0 {
 				to := Position(attacks.PopLSB())
-				moves = append(moves, Move{ From: sq, To: to })
+				moves = append(moves, Move{From: sq, To: to})
 			}
 		case PieceTypeKing:
 			attacks := kingAttacks[sq] & ^ourBitboard
 			for attacks != 0 {
 				to := Position(attacks.PopLSB())
-				moves = append(moves, Move{ From: sq, To: to })
+				moves = append(moves, Move{From: sq, To: to})
 			}
 
 			if color == PieceColorWhite && b.WhiteCanCastleKingside() {
-				if ((b.AllPieces >> 5) & 1) == 0 && ((b.AllPieces >> 6) & 1) == 0 && !b.IsSquareAttacked(4, false) && !b.IsSquareAttacked(5, false) && !b.IsSquareAttacked(6, false) {
-					moves = append(moves, Move{ From: sq, To: 6 })
+				if ((b.AllPieces>>5)&1) == 0 && ((b.AllPieces>>6)&1) == 0 && !b.IsSquareAttacked(4, false) && !b.IsSquareAttacked(5, false) && !b.IsSquareAttacked(6, false) {
+					moves = append(moves, Move{From: sq, To: 6})
 				}
 			}
 
 			if color == PieceColorWhite && b.WhiteCanCastleQueenside() {
-				if ((b.AllPieces >> 1) & 1) == 0 && ((b.AllPieces >> 2) & 1) == 0 && ((b.AllPieces >> 3) & 1) == 0 && !b.IsSquareAttacked(4, false) && !b.IsSquareAttacked(3, false) && !b.IsSquareAttacked(2, false) {
-					moves = append(moves, Move{ From: sq, To: 2 })
+				if ((b.AllPieces>>1)&1) == 0 && ((b.AllPieces>>2)&1) == 0 && ((b.AllPieces>>3)&1) == 0 && !b.IsSquareAttacked(4, false) && !b.IsSquareAttacked(3, false) && !b.IsSquareAttacked(2, false) {
+					moves = append(moves, Move{From: sq, To: 2})
 				}
 			}
 
 			if color == PieceColorBlack && b.BlackCanCastleKingside() {
-				if ((b.AllPieces >> 61) & 1) == 0 && ((b.AllPieces >> 62) & 1) == 0 && !b.IsSquareAttacked(60, true) && !b.IsSquareAttacked(61, true) && !b.IsSquareAttacked(62, true) {
-					moves = append(moves, Move{ From: sq, To: 62 })
+				if ((b.AllPieces>>61)&1) == 0 && ((b.AllPieces>>62)&1) == 0 && !b.IsSquareAttacked(60, true) && !b.IsSquareAttacked(61, true) && !b.IsSquareAttacked(62, true) {
+					moves = append(moves, Move{From: sq, To: 62})
 				}
 			}
 
 			if color == PieceColorBlack && b.BlackCanCastleQueenside() {
-				if ((b.AllPieces >> 57) & 1) == 0 && ((b.AllPieces >> 58) & 1) == 0 && ((b.AllPieces >> 59) & 1) == 0 && !b.IsSquareAttacked(60, true) && !b.IsSquareAttacked(59, true) && !b.IsSquareAttacked(58, true) {
-					moves = append(moves, Move{ From: sq, To: 58 })
+				if ((b.AllPieces>>57)&1) == 0 && ((b.AllPieces>>58)&1) == 0 && ((b.AllPieces>>59)&1) == 0 && !b.IsSquareAttacked(60, true) && !b.IsSquareAttacked(59, true) && !b.IsSquareAttacked(58, true) {
+					moves = append(moves, Move{From: sq, To: 58})
 				}
 			}
 		case PieceTypePawn:
@@ -394,11 +394,11 @@ func (b *Board) GeneratePseudoLegalMoves() []Move {
 			for attacks != 0 {
 				to := Position(attacks.PopLSB())
 				if (sq >> 3) == promotionRank {
-					for _, promoType := range []uint8{ PieceTypeQueen, PieceTypeRook, PieceTypeBishop, PieceTypeKnight } {
-						moves = append(moves, Move{ From: sq, To: to, Promotion: Piece(color | promoType) })
+					for _, promoType := range []uint8{PieceTypeQueen, PieceTypeRook, PieceTypeBishop, PieceTypeKnight} {
+						moves = append(moves, Move{From: sq, To: to, Promotion: Piece(color | promoType)})
 					}
 				} else {
-					moves = append(moves, Move{ From: sq, To: to })
+					moves = append(moves, Move{From: sq, To: to})
 				}
 			}
 
@@ -415,19 +415,19 @@ func (b *Board) GeneratePseudoLegalMoves() []Move {
 
 			if (sq >> 3) == promotionRank {
 				var promotionMoves []Move
-				for _, promoType := range []uint8{ PieceTypeQueen, PieceTypeRook, PieceTypeBishop, PieceTypeKnight } {
+				for _, promoType := range []uint8{PieceTypeQueen, PieceTypeRook, PieceTypeBishop, PieceTypeKnight} {
 					// forward promotion
-					if (forward < 64) && ((b.AllPieces >> forward) & 1) == 0 {
-						promotionMoves = append(promotionMoves, Move{ From: sq, To: forward, Promotion: Piece(color | promoType) })
+					if (forward < 64) && ((b.AllPieces>>forward)&1) == 0 {
+						promotionMoves = append(promotionMoves, Move{From: sq, To: forward, Promotion: Piece(color | promoType)})
 					}
 				}
 				moves = append(moves, promotionMoves...)
-			} else if (forward < 64) && ((b.AllPieces >> forward) & 1) == 0 {
-				moves = append(moves, Move{ From: sq, To: forward })
+			} else if (forward < 64) && ((b.AllPieces>>forward)&1) == 0 {
+				moves = append(moves, Move{From: sq, To: forward})
 				if (sq >> 3) == startRank {
 					doubleForward := forward + (forward - sq)
-					if (doubleForward < 64) && ((b.AllPieces >> doubleForward) & 1) == 0 {
-						moves = append(moves, Move{ From: sq, To: doubleForward })
+					if (doubleForward < 64) && ((b.AllPieces>>doubleForward)&1) == 0 {
+						moves = append(moves, Move{From: sq, To: doubleForward})
 					}
 				}
 			}
@@ -435,12 +435,12 @@ func (b *Board) GeneratePseudoLegalMoves() []Move {
 			// en passant
 			if b.EnPassantTarget != 64 {
 				if color == PieceColorWhite {
-					if (sq + 7 == b.EnPassantTarget && sq & 7 > 0) || (sq + 9 == b.EnPassantTarget && (sq & 7 < 7)) {
-						moves = append(moves, Move{ From: sq, To: b.EnPassantTarget })
+					if (sq+7 == b.EnPassantTarget && sq&7 > 0) || (sq+9 == b.EnPassantTarget && (sq&7 < 7)) {
+						moves = append(moves, Move{From: sq, To: b.EnPassantTarget})
 					}
 				} else {
-					if (sq - 7 == b.EnPassantTarget && sq & 7 < 7) || (sq - 9 == b.EnPassantTarget && sq & 7 > 0) {
-						moves = append(moves, Move{ From: sq, To: b.EnPassantTarget })
+					if (sq-7 == b.EnPassantTarget && sq&7 < 7) || (sq-9 == b.EnPassantTarget && sq&7 > 0) {
+						moves = append(moves, Move{From: sq, To: b.EnPassantTarget})
 					}
 				}
 			}
@@ -448,13 +448,13 @@ func (b *Board) GeneratePseudoLegalMoves() []Move {
 			attacks := b.GetSlidingAttacks(slidingBishop, int(sq)) & ^ourBitboard
 			for attacks != 0 {
 				to := Position(attacks.PopLSB())
-				moves = append(moves, Move{ From: sq, To: to })
+				moves = append(moves, Move{From: sq, To: to})
 			}
 		case PieceTypeRook:
 			attacks := b.GetSlidingAttacks(slidingRook, int(sq)) & ^ourBitboard
 			for attacks != 0 {
 				to := Position(attacks.PopLSB())
-				moves = append(moves, Move{ From: sq, To: to })
+				moves = append(moves, Move{From: sq, To: to})
 			}
 		case PieceTypeQueen:
 			rookAttacks := b.GetSlidingAttacks(slidingRook, int(sq))
@@ -462,7 +462,7 @@ func (b *Board) GeneratePseudoLegalMoves() []Move {
 			attacks := (rookAttacks | bishopAttacks) & ^ourBitboard
 			for attacks != 0 {
 				to := Position(attacks.PopLSB())
-				moves = append(moves, Move{ From: sq, To: to })
+				moves = append(moves, Move{From: sq, To: to})
 			}
 		}
 	}
@@ -503,9 +503,9 @@ func computeLegalMoves(sq Position, blockers Bitboard, directions []Direction) B
 	for _, d := range directions {
 		dr, df := d.dr, d.df
 		for step := 1; step < 8; step++ {
-			rank := int(sq >> 3) + step * dr
-			file := int(sq & 7) + step * df
-			coord := int(sq) + step * (dr * 8 + df)
+			rank := int(sq>>3) + step*dr
+			file := int(sq&7) + step*df
+			coord := int(sq) + step*(dr*8+df)
 			if rank < 0 || rank > 7 || file < 0 || file > 7 {
 				break
 			}
@@ -543,15 +543,14 @@ func computeBlockers(mask Bitboard) []Bitboard {
 	return blockers
 }
 
-
 func computeInteriorMask(sq Position, directions []Direction) Bitboard {
 	var mask Bitboard = 0
 	for _, d := range directions {
-		delta := d.dr * 8 + d.df
+		delta := d.dr*8 + d.df
 		for step := 1; step < 8; step++ {
-			nextRank := int(sq >> 3) + (step + 1) * d.dr
-			nextFile := int(sq & 7) + (step + 1) * d.df
-			coord := int(sq) + step * delta
+			nextRank := int(sq>>3) + (step+1)*d.dr
+			nextFile := int(sq&7) + (step+1)*d.df
+			coord := int(sq) + step*delta
 			if nextRank < 0 || nextRank > 7 || nextFile < 0 || nextFile > 7 {
 				break
 			}
@@ -576,13 +575,13 @@ func computeKnightAttacks() [64]Bitboard {
 		var attacks Bitboard = 0
 		rank := sq >> 3
 		file := sq & 7
-		directions := []Direction{ {2, 1}, {2, -1}, {-2, 1}, {-2, -1}, {1, 2}, {1, -2}, {-1, 2}, {-1, -2} }
+		directions := []Direction{{2, 1}, {2, -1}, {-2, 1}, {-2, -1}, {1, 2}, {1, -2}, {-1, 2}, {-1, -2}}
 
 		for _, d := range directions {
 			dr, df := d.dr, d.df
-			r, f := int(rank) + dr, int(file) + df
+			r, f := int(rank)+dr, int(file)+df
 			if r >= 0 && r <= 7 && f >= 0 && f <= 7 {
-				s := Position(r * 8 + f)
+				s := Position(r*8 + f)
 				attacks |= 1 << s
 			}
 		}
@@ -599,12 +598,12 @@ func computeKingAttacks() [64]Bitboard {
 		var attacks Bitboard = 0
 		rank := sq >> 3
 		file := sq & 7
-		directions := []Direction{ {1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1} }
+		directions := []Direction{{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {1, -1}, {-1, 1}, {-1, -1}}
 		for _, d := range directions {
 			dr, df := d.dr, d.df
-			r, f := int(rank) + dr, int(file) + df
+			r, f := int(rank)+dr, int(file)+df
 			if r >= 0 && r <= 7 && f >= 0 && f <= 7 {
-				s := Position(r * 8 + f)
+				s := Position(r*8 + f)
 				attacks |= 1 << s
 			}
 		}
@@ -621,22 +620,22 @@ func computePawnAttacks() [2][64]Bitboard {
 		var whiteAttacks, blackAttacks Bitboard = 0, 0
 		rank := sq >> 3
 		file := sq & 7
-		whiteDirections := []Direction{ {1, 1}, {1, -1} }
-		blackDirections := []Direction{ {-1, 1}, {-1, -1} }
+		whiteDirections := []Direction{{1, 1}, {1, -1}}
+		blackDirections := []Direction{{-1, 1}, {-1, -1}}
 		for _, d := range whiteDirections {
 			dr, df := d.dr, d.df
-			r, f := int(rank) + dr, int(file) + df
+			r, f := int(rank)+dr, int(file)+df
 			if r >= 0 && r <= 7 && f >= 0 && f <= 7 {
-				s := Position(r * 8 + f)
+				s := Position(r*8 + f)
 				whiteAttacks |= 1 << s
 			}
 		}
 
 		for _, d := range blackDirections {
 			dr, df := d.dr, d.df
-			r, f := int(rank) + dr, int(file) + df
+			r, f := int(rank)+dr, int(file)+df
 			if r >= 0 && r <= 7 && f >= 0 && f <= 7 {
-				s := Position(r * 8 + f)
+				s := Position(r*8 + f)
 				blackAttacks |= 1 << s
 			}
 		}
@@ -718,9 +717,9 @@ func (b *Board) IsSquareAttacked(pos Position, byWhite bool) bool {
 func (b *Board) KingSquare(white bool) Position {
 	var board Bitboard
 	if white {
-		board = b.PieceBitboards[0][PieceTypeKing - 1]
+		board = b.PieceBitboards[0][PieceTypeKing-1]
 	} else {
-		board = b.PieceBitboards[1][PieceTypeKing - 1]
+		board = b.PieceBitboards[1][PieceTypeKing-1]
 	}
 	return Position(board.LSB())
 }

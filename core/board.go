@@ -6,50 +6,50 @@ import (
 )
 
 const (
-	CastlingRightsNone = 0b0000
-	CastlingWhiteKingside = 0b0001
+	CastlingRightsNone     = 0b0000
+	CastlingWhiteKingside  = 0b0001
 	CastlingWhiteQueenside = 0b0010
-	CastlingBlackKingside = 0b0100
+	CastlingBlackKingside  = 0b0100
 	CastlingBlackQueenside = 0b1000
 )
 
 type Position uint8
 
 type MoveHistoryEntry struct {
-	From Position
-	To Position
+	From      Position
+	To        Position
 	Promotion Piece
-	Captured Piece
+	Captured  Piece
 
 	EnPassantTarget Position
-	CastlingRights 	uint8
-	IsEnPassant 		bool
+	CastlingRights  uint8
+	IsEnPassant     bool
 }
 
 type Board struct {
-	Pieces [64]Piece
-	PieceBitboards [2][6]Bitboard
-	AllPieces Bitboard
-	WhitePieces Bitboard
-	BlackPieces Bitboard
-	WhiteToMove bool
+	Pieces          [64]Piece
+	PieceBitboards  [2][6]Bitboard
+	AllPieces       Bitboard
+	WhitePieces     Bitboard
+	BlackPieces     Bitboard
+	WhiteToMove     bool
 	EnPassantTarget Position
-	CastlingRights uint8
-	MoveHistory []MoveHistoryEntry
+	CastlingRights  uint8
+	MoveHistory     []MoveHistoryEntry
 }
 
 func NewBoard() *Board {
-    return &Board{
-				Pieces:                 [64]Piece{},
-        PieceBitboards:           [2][6]Bitboard{},
-				WhitePieces:             0,
-				BlackPieces:             0,
-        WhiteToMove:      true,
-        EnPassantTarget:  64,
-        CastlingRights:   CastlingWhiteKingside | CastlingWhiteQueenside |
-                          CastlingBlackKingside | CastlingBlackQueenside,
-				MoveHistory:      []MoveHistoryEntry{},
-    }
+	return &Board{
+		Pieces:          [64]Piece{},
+		PieceBitboards:  [2][6]Bitboard{},
+		WhitePieces:     0,
+		BlackPieces:     0,
+		WhiteToMove:     true,
+		EnPassantTarget: 64,
+		CastlingRights: CastlingWhiteKingside | CastlingWhiteQueenside |
+			CastlingBlackKingside | CastlingBlackQueenside,
+		MoveHistory: []MoveHistoryEntry{},
+	}
 }
 
 func (b *Board) LastMove() *MoveHistoryEntry {
@@ -105,37 +105,37 @@ func (b *Board) Push(move *Move) {
 
 	switch type_ {
 	case PieceTypePawn:
-		if color == PieceColorWhite && to - from == 7 && b.EnPassantTarget == to {
-			removedPiece := b.Pieces[b.EnPassantTarget - 8]
+		if color == PieceColorWhite && to-from == 7 && b.EnPassantTarget == to {
+			removedPiece := b.Pieces[b.EnPassantTarget-8]
 			if removedPiece != PieceNone {
-				b.RemovePiece(b.EnPassantTarget - 8, removedPiece)
+				b.RemovePiece(b.EnPassantTarget-8, removedPiece)
 				captured = removedPiece
 				isEnPassant = true
 			}
-		} else if color == PieceColorWhite && to - from == 9 && b.EnPassantTarget == to {
-			removedPiece := b.Pieces[b.EnPassantTarget - 8]
+		} else if color == PieceColorWhite && to-from == 9 && b.EnPassantTarget == to {
+			removedPiece := b.Pieces[b.EnPassantTarget-8]
 			if removedPiece != PieceNone {
-				b.RemovePiece(b.EnPassantTarget - 8, removedPiece)
+				b.RemovePiece(b.EnPassantTarget-8, removedPiece)
 				captured = removedPiece
 				isEnPassant = true
 			}
-		} else if color == PieceColorBlack && from - to == 7 && b.EnPassantTarget == to {
-			removedPiece := b.Pieces[b.EnPassantTarget + 8]
+		} else if color == PieceColorBlack && from-to == 7 && b.EnPassantTarget == to {
+			removedPiece := b.Pieces[b.EnPassantTarget+8]
 			if removedPiece != PieceNone {
-				b.RemovePiece(b.EnPassantTarget + 8, removedPiece)
+				b.RemovePiece(b.EnPassantTarget+8, removedPiece)
 				captured = removedPiece
 				isEnPassant = true
 			}
-		} else if color == PieceColorBlack && from - to == 9 && b.EnPassantTarget == to {
-			removedPiece := b.Pieces[b.EnPassantTarget + 8]
+		} else if color == PieceColorBlack && from-to == 9 && b.EnPassantTarget == to {
+			removedPiece := b.Pieces[b.EnPassantTarget+8]
 			if removedPiece != PieceNone {
-				b.RemovePiece(b.EnPassantTarget + 8, removedPiece)
+				b.RemovePiece(b.EnPassantTarget+8, removedPiece)
 				captured = removedPiece
 				isEnPassant = true
 			}
-		} else if color == PieceColorWhite && to - from == 16 {
+		} else if color == PieceColorWhite && to-from == 16 {
 			enPassantTarget = to - 8
-		} else if color == PieceColorBlack && from - to == 16 {
+		} else if color == PieceColorBlack && from-to == 16 {
 			enPassantTarget = to + 8
 		} else {
 			enPassantTarget = 64 // Reset En Passant target
@@ -184,13 +184,13 @@ func (b *Board) Push(move *Move) {
 	}
 
 	b.MoveHistory = append(b.MoveHistory, MoveHistoryEntry{
-		From:      from,
-		To:        to,
-		Promotion: move.Promotion,
-		Captured:  captured,
-		IsEnPassant: isEnPassant,
+		From:            from,
+		To:              to,
+		Promotion:       move.Promotion,
+		Captured:        captured,
+		IsEnPassant:     isEnPassant,
 		EnPassantTarget: b.EnPassantTarget,
-		CastlingRights: castlingRights,
+		CastlingRights:  castlingRights,
 	})
 
 	b.EnPassantTarget = enPassantTarget
@@ -218,7 +218,7 @@ func (b *Board) Pop() {
 	if lastMove.Promotion == PieceNone {
 		b.AddPiece(from, piece)
 	} else {
-		b.AddPiece(from, piece & PieceColorMask | PieceTypePawn) // Revert to pawn
+		b.AddPiece(from, piece&PieceColorMask|PieceTypePawn) // Revert to pawn
 	}
 
 	type_ := piece & PieceTypeMask
@@ -228,9 +228,9 @@ func (b *Board) Pop() {
 	case PieceTypePawn:
 		if lastMove.IsEnPassant {
 			if color == PieceColorWhite {
-				b.AddPiece(lastMove.EnPassantTarget - 8, PieceBlackPawn)
+				b.AddPiece(lastMove.EnPassantTarget-8, PieceBlackPawn)
 			} else {
-				b.AddPiece(lastMove.EnPassantTarget + 8, PieceWhitePawn)
+				b.AddPiece(lastMove.EnPassantTarget+8, PieceWhitePawn)
 			}
 		}
 	case PieceTypeKing:
@@ -269,7 +269,7 @@ func (b *Board) RemovePiece(pos Position, piece Piece) {
 	b.Pieces[pos] = PieceNone
 	b.AllPieces &^= (1 << pos)
 	color := (piece & PieceColorMask) >> 3
-	type_ := int(piece & PieceTypeMask) - 1
+	type_ := int(piece&PieceTypeMask) - 1
 
 	if type_ >= 0 {
 		b.PieceBitboards[color][type_] &^= (1 << pos)
@@ -299,7 +299,6 @@ func (b *Board) AddPiece(pos Position, piece Piece) {
 	}
 }
 
-
 func (b *Board) WhiteCanCastleKingside() bool {
 	return (b.CastlingRights & CastlingWhiteKingside) != 0
 }
@@ -322,10 +321,10 @@ func (b *Board) ToAlgebraNotation(move Move) string {
 	promotion := move.Promotion
 
 	s := make([]byte, 0, 5)
-	s = append(s, byte('a' + (from & 7)))
-	s = append(s, byte('1' + (from >> 3)))
-	s = append(s, byte('a' + (to & 7)))
-	s = append(s, byte('1' + (to >> 3)))
+	s = append(s, byte('a'+(from&7)))
+	s = append(s, byte('1'+(from>>3)))
+	s = append(s, byte('a'+(to&7)))
+	s = append(s, byte('1'+(to>>3)))
 	if promotion != PieceNone {
 		switch promotion {
 		case PieceWhiteQueen, PieceBlackQueen:
