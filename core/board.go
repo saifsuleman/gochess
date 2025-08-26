@@ -61,6 +61,8 @@ func (b *Board) Push(move *Move) {
 	piece := b.Pieces[from]
 	captured := b.Pieces[to]
 
+	castlingRights := b.CastlingRights
+
 	if captured != PieceNone {
 		b.RemovePiece(to, captured)
 	}
@@ -81,28 +83,28 @@ func (b *Board) Push(move *Move) {
 		}
 
 		if color == PieceColorWhite && to - from == 7 && b.EnPassantTarget == to {
-			removedPiece := b.Pieces[b.EnPassantTarget]
+			removedPiece := b.Pieces[b.EnPassantTarget - 8]
 			if removedPiece != PieceNone {
 				b.RemovePiece(b.EnPassantTarget - 8, removedPiece)
 				captured = removedPiece
 				isEnPassant = true
 			}
 		} else if color == PieceColorWhite && to - from == 9 && b.EnPassantTarget == to {
-			removedPiece := b.Pieces[b.EnPassantTarget]
+			removedPiece := b.Pieces[b.EnPassantTarget - 8]
 			if removedPiece != PieceNone {
 				b.RemovePiece(b.EnPassantTarget - 8, removedPiece)
 				captured = removedPiece
 				isEnPassant = true
 			}
 		} else if color == PieceColorBlack && from - to == 7 && b.EnPassantTarget == to {
-			removedPiece := b.Pieces[b.EnPassantTarget]
+			removedPiece := b.Pieces[b.EnPassantTarget + 8]
 			if removedPiece != PieceNone {
 				b.RemovePiece(b.EnPassantTarget + 8, removedPiece)
 				captured = removedPiece
 				isEnPassant = true
 			}
 		} else if color == PieceColorBlack && from - to == 9 && b.EnPassantTarget == to {
-			removedPiece := b.Pieces[b.EnPassantTarget]
+			removedPiece := b.Pieces[b.EnPassantTarget + 8]
 			if removedPiece != PieceNone {
 				b.RemovePiece(b.EnPassantTarget + 8, removedPiece)
 				captured = removedPiece
@@ -120,19 +122,41 @@ func (b *Board) Push(move *Move) {
 		if color == PieceColorWhite && from == 4 && to == 6 {
 			b.RemovePiece(7, PieceWhiteRook)
 			b.AddPiece(5, PieceWhiteRook)
-			b.CastlingRights &^= CastlingWhiteKingside
+			b.CastlingRights &^= CastlingWhiteKingside | CastlingWhiteQueenside
 		} else if color == PieceColorWhite && from == 4 && to == 2 {
 			b.RemovePiece(0, PieceWhiteRook)
 			b.AddPiece(3, PieceWhiteRook)
-			b.CastlingRights &^= CastlingWhiteQueenside
+			b.CastlingRights &^= CastlingWhiteQueenside | CastlingWhiteKingside
 		} else if color == PieceColorBlack && from == 60 && to == 62 {
 			b.RemovePiece(63, PieceBlackRook)
 			b.AddPiece(61, PieceBlackRook)
-			b.CastlingRights &^= CastlingBlackKingside
+			b.CastlingRights &^= CastlingBlackKingside | CastlingBlackQueenside
 		} else if color == PieceColorBlack && from == 60 && to == 58 {
 			b.RemovePiece(56, PieceBlackRook)
 			b.AddPiece(59, PieceBlackRook)
-			b.CastlingRights &^= CastlingBlackQueenside
+			b.CastlingRights &^= CastlingBlackQueenside | CastlingBlackKingside
+		} else {
+			if color == PieceColorWhite {
+				b.CastlingRights &^= (CastlingWhiteKingside | CastlingWhiteQueenside)
+			} else {
+				b.CastlingRights &^= (CastlingBlackKingside | CastlingBlackQueenside)
+			}
+		}
+	case PieceTypeRook:
+		if color == PieceColorWhite {
+			switch from {
+			case 0:
+				b.CastlingRights &^= CastlingWhiteQueenside
+			case 7:
+				b.CastlingRights &^= CastlingWhiteKingside
+			}
+		} else {
+			switch from {
+			case 56:
+				b.CastlingRights &^= CastlingBlackQueenside
+			case 63:
+				b.CastlingRights &^= CastlingBlackKingside
+			}
 		}
 	}
 
@@ -143,6 +167,7 @@ func (b *Board) Push(move *Move) {
 		Captured:  captured,
 		IsEnPassant: isEnPassant,
 		EnPassantTarget: b.EnPassantTarget,
+		CastlingRights: castlingRights,
 	})
 
 	b.EnPassantTarget = enPassantTarget
@@ -190,27 +215,24 @@ func (b *Board) Pop() {
 		if color == PieceColorWhite && from == 4 && to == 6 {
 			b.RemovePiece(5, PieceWhiteRook)
 			b.AddPiece(7, PieceWhiteRook)
-			b.CastlingRights |= CastlingWhiteKingside
 		}
 		if color == PieceColorWhite && from == 4 && to == 2 {
 			b.RemovePiece(3, PieceWhiteRook)
 			b.AddPiece(0, PieceWhiteRook)
-			b.CastlingRights |= CastlingWhiteQueenside
 		}
 		if color == PieceColorBlack && from == 60 && to == 62 {
 			b.RemovePiece(61, PieceBlackRook)
 			b.AddPiece(63, PieceBlackRook)
-			b.CastlingRights |= CastlingBlackKingside
 		}
 		if color == PieceColorBlack && from == 60 && to == 58 {
 			b.RemovePiece(59, PieceBlackRook)
 			b.AddPiece(56, PieceBlackRook)
-			b.CastlingRights |= CastlingBlackQueenside
 		}
 	}
 
 	b.WhiteToMove = !b.WhiteToMove
 	b.EnPassantTarget = lastMove.EnPassantTarget
+	b.CastlingRights = lastMove.CastlingRights
 }
 
 func (b *Board) RemovePiece(pos Position, piece Piece) {

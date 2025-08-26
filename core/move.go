@@ -125,9 +125,23 @@ func (b *Board) GeneratePseudoLegalMoves() []Move {
 				if ((b.AllPieces >> 5) & 1) == 0 && ((b.AllPieces >> 6) & 1) == 0 && !b.IsSquareAttacked(4, false) && !b.IsSquareAttacked(5, false) && !b.IsSquareAttacked(6, false) {
 					moves = append(moves, Move{ From: sq, To: 6 })
 				}
-			} else {
-				if (((b.AllPieces >> 61) & 1) == 0) && (((b.AllPieces >> 62) & 1) == 0) && (((b.AllPieces >> 63) & 1) == 0) && !b.IsSquareAttacked(60, true) && !b.IsSquareAttacked(61, true) && !b.IsSquareAttacked(62, true) {
+			}
+
+			if color == PieceColorWhite && b.WhiteCanCastleQueenside() {
+				if ((b.AllPieces >> 1) & 1) == 0 && ((b.AllPieces >> 2) & 1) == 0 && ((b.AllPieces >> 3) & 1) == 0 && !b.IsSquareAttacked(4, false) && !b.IsSquareAttacked(3, false) && !b.IsSquareAttacked(2, false) {
+					moves = append(moves, Move{ From: sq, To: 2 })
+				}
+			}
+
+			if color == PieceColorBlack && b.BlackCanCastleKingside() {
+				if ((b.AllPieces >> 61) & 1) == 0 && ((b.AllPieces >> 62) & 1) == 0 && !b.IsSquareAttacked(60, true) && !b.IsSquareAttacked(61, true) && !b.IsSquareAttacked(62, true) {
 					moves = append(moves, Move{ From: sq, To: 62 })
+				}
+			}
+
+			if color == PieceColorBlack && b.BlackCanCastleQueenside() {
+				if ((b.AllPieces >> 57) & 1) == 0 && ((b.AllPieces >> 58) & 1) == 0 && ((b.AllPieces >> 59) & 1) == 0 && !b.IsSquareAttacked(60, true) && !b.IsSquareAttacked(59, true) && !b.IsSquareAttacked(58, true) {
+					moves = append(moves, Move{ From: sq, To: 58 })
 				}
 			}
 		case PieceTypePawn:

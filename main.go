@@ -11,6 +11,8 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
+const FEN = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1"
+
 func sqToPen(sq core.Position) string {
 	rank := sq >> 3
 	file := sq & 7
@@ -18,12 +20,19 @@ func sqToPen(sq core.Position) string {
 }
 
 func main() {
-	// play()
-
-	board, err := fen.LoadFromFEN(fen.DefaultFEN())
+	board, err := fen.LoadFromFEN(FEN)
 	if err != nil {
 		log.Fatal(err)
 	}
+	// play(board)
+
+	chessGame := chess.NewGame()
+	fn, err := chess.FEN(FEN)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fn(chessGame)
+	countMovesAndTrack(board, chessGame, 3)
 
 	for depth := range 10 {
 		moves := countMoves(board, depth)
@@ -85,7 +94,8 @@ func countMovesAndTrack(board *core.Board, cb *chess.Game, depth int) int {
 			}
 		}
 
-		log.Fatalf("Move count mismatch: %d vs %d (%s)\n", len(moves), len(otherMoves), cb.FEN())
+		log.Printf("Move count mismatch: %d vs %d (%s)\n", len(moves), len(otherMoves), cb.FEN())
+		play(board)
 	}
 
 	if len(moves) == 0 {
@@ -109,9 +119,9 @@ func countMovesAndTrack(board *core.Board, cb *chess.Game, depth int) int {
 	return totalMoves
 }
 
-func play() {
+func play(board *core.Board) {
 	game.Init()
-	game := game.NewGame()
+	game := game.NewGame(board)
 	ebiten.SetWindowTitle("hi")
 	ebiten.SetWindowSize(45*8,45*8)
 	if err := ebiten.RunGame(game); err != nil {

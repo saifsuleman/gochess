@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"gochess/core"
 	"gochess/engine"
 	"gochess/fen"
@@ -47,11 +48,7 @@ type Game struct {
 	mouseY       float64
 }
 
-func NewGame() *Game {
-	board, err := fen.LoadFromFEN(fen.DefaultFEN())
-	if err != nil {
-		panic(err)
-	}
+func NewGame(board *core.Board) *Game {
 	engine := engine.NewEngine(board)
 	game := &Game{Board: board, selected: -1, engine: engine}
 	return game
@@ -85,8 +82,14 @@ func (g *Game) Update() error {
 				Promotion: core.PieceNone, // Could add promotion UI later
 			}
 
+			fmt.Printf("black kingside: %v\n", g.Board.BlackCanCastleKingside())
+			fmt.Printf("white kingside: %v\n", g.Board.WhiteCanCastleKingside())
+			fmt.Printf("black queenside: %v\n", g.Board.BlackCanCastleQueenside())
+			fmt.Printf("white queenside: %v\n", g.Board.WhiteCanCastleQueenside())
+
 			if g.Board.IsMoveLegal(move) {
 				g.Board.Push(&move)
+
 				g.prevMoveFrom = g.dragStart
 				g.prevMoveTo = toSquare
 

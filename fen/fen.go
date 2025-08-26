@@ -8,7 +8,6 @@ import (
 
 func DefaultFEN() string {
 	return "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
-	// return "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "
 }
 
 func squareFromString(s string) core.Position {
@@ -184,6 +183,8 @@ func LoadFromFEN(fen string) (*core.Board, error) {
 	board.CastlingRights = core.CastlingRightsNone
 	if parts[2] != "-" {
 		for _, ch := range parts[2] {
+			fmt.Println("yes applying some castling rights...")
+
 			switch ch {
 			case 'K':
 				board.CastlingRights |= core.CastlingWhiteKingside
@@ -201,6 +202,8 @@ func LoadFromFEN(fen string) (*core.Board, error) {
 
 	// 4. En passant target
 	board.EnPassantTarget = squareFromString(parts[3])
+
+	fmt.Println("new castling rights", board.CastlingRights)
 
 	return board, nil
 }
