@@ -61,6 +61,41 @@ func NewSlidingPiece(directions []Direction, magic [64]Bitboard, shifts [64]int)
 }
 
 func (b *Board) GenerateLegalMoves() []Move {
+	white := b.WhiteToMove
+	pseudoLegalMoves := b.GeneratePseudoLegalMoves()
+	legalMoves := []Move{}
+
+	for _, move := range pseudoLegalMoves {
+		b.Push(&move)
+
+		var king Position
+		if white {
+			king = Position(b.PieceBitboards[0][PieceTypeKing - 1].LSB())
+		} else {
+			king = Position(b.PieceBitboards[1][PieceTypeKing - 1].LSB())
+		}
+
+		enemyMoves := b.GeneratePseudoLegalMoves()
+		inCheck := false
+
+		for _, emove := range enemyMoves {
+			if emove.To == king {
+				inCheck = true
+				break
+			}
+		}
+
+		b.Pop()
+
+		if !inCheck {
+			legalMoves = append(legalMoves, move)
+		}
+	}
+
+	return legalMoves
+}
+
+func (b *Board) GeneratePseudoLegalMoves() []Move {
 	moves := []Move{}
 
 	var ourBitboard Bitboard
@@ -92,6 +127,17 @@ func (b *Board) GenerateLegalMoves() []Move {
 			for attacks != 0 {
 				to := Position(attacks.PopLSB())
 				moves = append(moves, Move{ From: sq, To: to })
+			}
+
+			// castling (TODO: check detection for when someone is checking in the path of our castling)
+			if color == PieceColorWhite && b.WhiteCanCastleKingside() {
+				if ((b.AllPieces >> 5) & 1) == 0 && ((b.AllPieces >> 6) & 1) == 0 {
+					moves = append(moves, Move{ From: sq, To: 6 })
+				}
+			} else {
+				if (((b.AllPieces >> 61) & 1) == 0) && (((b.AllPieces >> 62) & 1) == 0) {
+					moves = append(moves, Move{ From: sq, To: 62 })
+				}
 			}
 		case PieceTypePawn:
 			var attacks Bitboard

@@ -21,3 +21,7 @@ func (bb *Bitboard) PopLSB() int {
 	*bb &= *bb - 1
 	return sq
 }
+
+func (bb *Bitboard) LSB() int {
+	return bits.TrailingZeros64(uint64(*bb))
+}

@@ -250,3 +250,19 @@ func (b *Board) AddPiece(pos Position, piece Piece) {
 	}
 }
 
+
+func (b *Board) WhiteCanCastleKingside() bool {
+	return (b.CastlingRights & CastlingWhiteKingside) != 0
+}
+
+func (b *Board) WhiteCanCastleQueenside() bool {
+	return (b.CastlingRights & CastlingWhiteQueenside) != 0
+}
+
+func (b *Board) BlackCanCastleKingside() bool {
+	return (b.CastlingRights & CastlingBlackKingside) != 0
+}
+
+func (b *Board) BlackCanCastleQueenside() bool {
+	return (b.CastlingRights & CastlingBlackQueenside) != 0
+}
