@@ -1,7 +1,6 @@
 package core
 
 import (
-	"fmt"
 	"log"
 	"slices"
 )
@@ -60,6 +59,7 @@ func NewSlidingPiece(directions []Direction, magic [64]Bitboard, shifts [64]int)
 	}
 }
 
+// TODO: this still needs heavy optimization with using bitmasks and stuff for check detection, pin detection, etc... right now it's kinda hacky
 func (b *Board) GenerateLegalMoves() []Move {
 	white := b.WhiteToMove
 	pseudoLegalMoves := b.GeneratePseudoLegalMoves()
@@ -121,13 +121,12 @@ func (b *Board) GeneratePseudoLegalMoves() []Move {
 				moves = append(moves, Move{ From: sq, To: to })
 			}
 
-			// castling (TODO: check detection for when someone is checking in the path of our castling)
 			if color == PieceColorWhite && b.WhiteCanCastleKingside() {
-				if ((b.AllPieces >> 5) & 1) == 0 && ((b.AllPieces >> 6) & 1) == 0 {
+				if ((b.AllPieces >> 5) & 1) == 0 && ((b.AllPieces >> 6) & 1) == 0 && !b.IsSquareAttacked(4, false) && !b.IsSquareAttacked(5, false) && !b.IsSquareAttacked(6, false) {
 					moves = append(moves, Move{ From: sq, To: 6 })
 				}
 			} else {
-				if (((b.AllPieces >> 61) & 1) == 0) && (((b.AllPieces >> 62) & 1) == 0) {
+				if (((b.AllPieces >> 61) & 1) == 0) && (((b.AllPieces >> 62) & 1) == 0) && (((b.AllPieces >> 63) & 1) == 0) && !b.IsSquareAttacked(60, true) && !b.IsSquareAttacked(61, true) && !b.IsSquareAttacked(62, true) {
 					moves = append(moves, Move{ From: sq, To: 62 })
 				}
 			}
@@ -167,11 +166,11 @@ func (b *Board) GeneratePseudoLegalMoves() []Move {
 			// en passant
 			if b.EnPassantTarget != 64 {
 				if color == PieceColorWhite {
-					if (sq + 7 == b.EnPassantTarget) || (sq + 9 == b.EnPassantTarget) {
+					if (sq + 7 == b.EnPassantTarget && sq & 7 > 0) || (sq + 9 == b.EnPassantTarget && (sq & 7 < 7)) {
 						moves = append(moves, Move{ From: sq, To: b.EnPassantTarget })
 					}
 				} else {
-					if (sq - 7 == b.EnPassantTarget) || (sq - 9 == b.EnPassantTarget) {
+					if (sq - 7 == b.EnPassantTarget && sq & 7 < 7) || (sq - 9 == b.EnPassantTarget && sq & 7 > 0) {
 						moves = append(moves, Move{ From: sq, To: b.EnPassantTarget })
 					}
 				}
@@ -387,54 +386,49 @@ func (b *Board) GetSlidingAttacks(sp *SlidingPiece, sq int) Bitboard {
 	return result
 }
 
-func (b *Board) IsSquareAttacked(sq Position, byWhite bool) bool {
-	byWhiteIndex := 0
-	if !byWhite {
-		byWhiteIndex = 1
-	}
-
-	var enemyBitboard Bitboard
+// TODO: fix this god awful fucking function this shit is so cursed
+func (b *Board) IsSquareAttacked(pos Position, byWhite bool) bool {
+	var attacking Bitboard = 0
+	var enemyPieces Bitboard
 	if byWhite {
-		enemyBitboard = b.WhitePieces
+		enemyPieces = b.WhitePieces
 	} else {
-		enemyBitboard = b.BlackPieces
+		enemyPieces = b.BlackPieces
 	}
 
-	// pawns
-	var pawnAttacks_ Bitboard
+	var pawnIndex int
 	if byWhite {
-		pawnAttacks_ = pawnAttacks[0][sq] & enemyBitboard
+		pawnIndex = 0
 	} else {
-		pawnAttacks_ = pawnAttacks[1][sq] & enemyBitboard
+		pawnIndex = 1
 	}
 
-	if pawnAttacks_ != 0 {
-		return true
+	for enemyPieces != 0 {
+		sq := enemyPieces.PopLSB()
+		piece := b.Pieces[sq]
+		type_ := piece & PieceTypeMask
+		switch type_ {
+		case PieceTypePawn:
+			pawnAttacking := pawnAttacks[pawnIndex][sq]
+			attacking |= pawnAttacking
+		case PieceTypeKnight:
+			knightAttacking := knightAttacks[sq]
+			attacking |= knightAttacking
+		case PieceTypeKing:
+			kingAttacking := kingAttacks[sq]
+			attacking |= kingAttacking
+		case PieceTypeBishop:
+			bishopAttacking := b.GetSlidingAttacks(slidingBishop, sq)
+			attacking |= bishopAttacking
+		case PieceTypeQueen:
+			bishopAttacking := b.GetSlidingAttacks(slidingBishop, sq)
+			rookAttacking := b.GetSlidingAttacks(slidingRook, sq)
+			attacking |= bishopAttacking | rookAttacking
+		case PieceTypeRook:
+			rookAttacking := b.GetSlidingAttacks(slidingRook, sq)
+			attacking |= rookAttacking
+		}
 	}
 
-	// knights
-	knightAttackers := knightAttacks[sq] & enemyBitboard & (b.PieceBitboards[byWhiteIndex][PieceTypeKnight - 1])
-	if knightAttackers != 0 {
-		return true
-	}
-
-	// kings
-	kingAttackers := kingAttacks[sq] & enemyBitboard & (b.PieceBitboards[byWhiteIndex][PieceTypeKing - 1])
-	if kingAttackers != 0 {
-		return true
-	}
-
-	// bishops / queens
-	bishopAttackers := b.GetSlidingAttacks(slidingBishop, int(sq)) & enemyBitboard & (b.PieceBitboards[byWhiteIndex][PieceTypeBishop - 1] | b.PieceBitboards[byWhiteIndex][PieceTypeQueen - 1])
-	if bishopAttackers != 0 {
-		return true
-	}
-
-	// rooks / queens
-	rookAttackers := b.GetSlidingAttacks(slidingRook, int(sq)) & enemyBitboard & (b.PieceBitboards[byWhiteIndex][PieceTypeRook - 1] | b.PieceBitboards[byWhiteIndex][PieceTypeQueen - 1])
-	if rookAttackers != 0 {
-		return true
-	}
-
-	return false
+	return (attacking>>pos)&1 == 1
 }

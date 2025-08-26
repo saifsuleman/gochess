@@ -8,6 +8,7 @@ import (
 
 func DefaultFEN() string {
 	return "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+	// return "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - "
 }
 
 func squareFromString(s string) core.Position {
@@ -17,6 +18,97 @@ func squareFromString(s string) core.Position {
 	file := int(s[0] - 'a')
 	rank := int(s[1] - '1')
 	return core.Position(file + rank*8)
+}
+
+func BoardToFEN(board *core.Board) string {
+	var sb strings.Builder
+
+	// 1. Piece placement
+	for rank := 7; rank >= 0; rank-- {
+		emptyCount := 0
+		for file := range 8 {
+			sq := core.Position(rank*8 + file)
+			piece := board.Pieces[sq]
+			if piece == core.PieceNone {
+				emptyCount++
+				continue
+			}
+			if emptyCount > 0 {
+				sb.WriteString(fmt.Sprintf("%d", emptyCount))
+				emptyCount = 0
+			}
+			switch piece {
+			case core.PieceWhitePawn:
+				sb.WriteByte('P')
+			case core.PieceWhiteKnight:
+				sb.WriteByte('N')
+			case core.PieceWhiteBishop:
+				sb.WriteByte('B')
+			case core.PieceWhiteRook:
+				sb.WriteByte('R')
+			case core.PieceWhiteQueen:
+				sb.WriteByte('Q')
+			case core.PieceWhiteKing:
+				sb.WriteByte('K')
+			case core.PieceBlackPawn:
+				sb.WriteByte('p')
+			case core.PieceBlackKnight:
+				sb.WriteByte('n')
+			case core.PieceBlackBishop:
+				sb.WriteByte('b')
+			case core.PieceBlackRook:
+				sb.WriteByte('r')
+			case core.PieceBlackQueen:
+				sb.WriteByte('q')
+			case core.PieceBlackKing:
+				sb.WriteByte('k')
+			}
+		}
+		if emptyCount > 0 {
+			sb.WriteString(fmt.Sprintf("%d", emptyCount))
+		}
+		if rank > 0 {
+			sb.WriteByte('/')
+		}
+	}
+
+	// 2. Active color
+	if board.WhiteToMove {
+		sb.WriteString(" w ")
+	} else {
+		sb.WriteString(" b ")
+	}
+
+	// 3. Castling rights
+	if board.CastlingRights == core.CastlingRightsNone {
+		sb.WriteString("- ")
+	} else {
+		if board.CastlingRights&core.CastlingWhiteKingside != 0 {
+			sb.WriteByte('K')
+		}
+		if board.CastlingRights&core.CastlingWhiteQueenside != 0 {
+			sb.WriteByte('Q')
+		}
+		if board.CastlingRights&core.CastlingBlackKingside != 0 {
+			sb.WriteByte('k')
+		}
+		if board.CastlingRights&core.CastlingBlackQueenside != 0 {
+			sb.WriteByte('q')
+		}
+		sb.WriteByte(' ')
+	}
+	// 4. En passant target
+	if board.EnPassantTarget == 64 {
+		sb.WriteString("-")
+	} else {
+		file := board.EnPassantTarget & 7
+		rank := board.EnPassantTarget >> 3
+		sb.WriteByte('a' + byte(file))
+		sb.WriteByte('1' + byte(rank))
+	}
+
+	// Note: We omit halfmove clock and fullmove number for simplicity
+	return sb.String()
 }
 
 func LoadFromFEN(fen string) (*core.Board, error) {

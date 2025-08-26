@@ -266,3 +266,28 @@ func (b *Board) BlackCanCastleKingside() bool {
 func (b *Board) BlackCanCastleQueenside() bool {
 	return (b.CastlingRights & CastlingBlackQueenside) != 0
 }
+
+func (b *Board) ToAlgebraNotation(move Move) string {
+	from := move.From
+	to := move.To
+	promotion := move.Promotion
+
+	s := make([]byte, 0, 5)
+	s = append(s, byte('a' + (from & 7)))
+	s = append(s, byte('1' + (from >> 3)))
+	s = append(s, byte('a' + (to & 7)))
+	s = append(s, byte('1' + (to >> 3)))
+	if promotion != PieceNone {
+		switch promotion {
+		case PieceWhiteQueen, PieceBlackQueen:
+			s = append(s, 'q')
+		case PieceWhiteRook, PieceBlackRook:
+			s = append(s, 'r')
+		case PieceWhiteBishop, PieceBlackBishop:
+			s = append(s, 'b')
+		case PieceWhiteKnight, PieceBlackKnight:
+			s = append(s, 'n')
+		}
+	}
+	return string(s)
+}
