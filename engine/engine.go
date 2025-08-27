@@ -34,13 +34,13 @@ TODO:
 const maxDepth = 24
 
 type Engine struct {
-	Board *core.Board
-	TT *TranspositionalTable
-	Deadline time.Time
+	Board         *core.Board
+	TT            *TranspositionalTable
+	Deadline      time.Time
 	NodesSearched uint64
-	Aborted bool
-	KillerMoves [maxDepth + 1][2]core.Move
-	HistoryTable [64][64]int
+	Aborted       bool
+	KillerMoves   [maxDepth + 1][2]core.Move
+	HistoryTable  [64][64]int
 }
 
 func (e *Engine) TimeUp() bool {

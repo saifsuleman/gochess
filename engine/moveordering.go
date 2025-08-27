@@ -54,7 +54,7 @@ func (e *Engine) killerHistoryScore(move core.Move, depth int) int {
 		return 80_000
 	}
 
-	isCapture := (move.To == e.Board.EnPassantTarget) || ((1 << move.To) & e.Board.AllPieces) != 0
+	isCapture := (move.To == e.Board.EnPassantTarget) || ((1<<move.To)&e.Board.AllPieces) != 0
 	if !isCapture {
 		return e.HistoryTable[move.From][move.To]
 	}

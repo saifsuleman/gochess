@@ -5,14 +5,14 @@ import (
 )
 
 const (
-	MateScore = 30000
+	MateScore     = 30000
 	MateThreshold = MateScore - 1000
 )
 
 func (e *Engine) negamax(depth int, alpha, beta, rootDepth int) int {
 	e.NodesSearched++
 
-	if e.NodesSearched % 2048 == 0 && e.TimeUp() {
+	if e.NodesSearched%2048 == 0 && e.TimeUp() {
 		e.Aborted = true
 		return 0
 	}
@@ -33,19 +33,25 @@ func (e *Engine) negamax(depth int, alpha, beta, rootDepth int) int {
 
 	// TODO: keep an eye on this, I've found sometimes it makes the engine worse
 	// i don't trust you
-	isNullWindow := beta - alpha == 1
+	isNullWindow := beta-alpha == 1
 	nmpMask := e.Board.AllPieces
-	nmpMask ^= e.Board.PieceBitboards[0][core.PieceTypeKing - 1] | e.Board.PieceBitboards[1][core.PieceTypeKing - 1]
-	nmpMask ^= e.Board.PieceBitboards[0][core.PieceTypePawn - 1] | e.Board.PieceBitboards[1][core.PieceTypePawn - 1]
-	if isNullWindow && depth >= 3 && nmpMask != 0 && !e.Board.InCheck(e.Board.WhiteToMove) && e.Evaluate() >= beta  {
+	nmpMask ^= e.Board.PieceBitboards[0][core.PieceTypeKing-1] | e.Board.PieceBitboards[1][core.PieceTypeKing-1]
+	nmpMask ^= e.Board.PieceBitboards[0][core.PieceTypePawn-1] | e.Board.PieceBitboards[1][core.PieceTypePawn-1]
+	if isNullWindow && depth >= 3 && nmpMask != 0 && !e.Board.InCheck(e.Board.WhiteToMove) && e.Evaluate() >= beta {
 		enPassant := e.Board.EnPassantTarget
 		e.Board.EnPassantTarget = 64
 		e.Board.WhiteToMove = !e.Board.WhiteToMove
+
 		nullScore := -e.negamax(depth-3, -beta, -beta+1, rootDepth) // reduction R=2
+
 		e.Board.WhiteToMove = !e.Board.WhiteToMove
 		e.Board.EnPassantTarget = enPassant
+
 		if nullScore >= beta {
-			return nullScore
+			depth -= 4
+			if depth <= 0 {
+				return e.quiscence(alpha, beta, rootDepth)
+			}
 		}
 	}
 
@@ -86,7 +92,7 @@ func (e *Engine) negamax(depth int, alpha, beta, rootDepth int) int {
 			continue
 		}
 
-		isCapture := (move.To == board.EnPassantTarget) || ((1 << move.To) & board.AllPieces) != 0
+		isCapture := (move.To == board.EnPassantTarget) || ((1<<move.To)&board.AllPieces) != 0
 		board.Push(&move)
 		searchDepth := depth - 1
 
@@ -101,7 +107,7 @@ func (e *Engine) negamax(depth int, alpha, beta, rootDepth int) int {
 			score = -e.negamax(searchDepth, -beta, -alpha, rootDepth)
 			firstMove = false
 		} else {
-			score = -e.negamax(searchDepth, -alpha - 1, -alpha, rootDepth)
+			score = -e.negamax(searchDepth, -alpha-1, -alpha, rootDepth)
 			if score > alpha && score < beta {
 				score = -e.negamax(searchDepth, -beta, -alpha, rootDepth)
 			}
@@ -117,7 +123,7 @@ func (e *Engine) negamax(depth int, alpha, beta, rootDepth int) int {
 			alpha = bestScore
 		}
 		if alpha >= beta {
-			isCapture := move.To == board.EnPassantTarget || ((1 << move.To) & board.AllPieces) != 0
+			isCapture := move.To == board.EnPassantTarget || ((1<<move.To)&board.AllPieces) != 0
 			if !isCapture {
 				e.addKillerMove(move, depth)
 				e.HistoryTable[move.From][move.To] += depth * depth

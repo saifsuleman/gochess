@@ -36,7 +36,7 @@ type Board struct {
 	EnPassantTarget Position
 	CastlingRights  uint8
 	MoveHistory     []MoveHistoryEntry
-	Ply 						int
+	Ply             int
 }
 
 func NewBoard() *Board {

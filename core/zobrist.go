@@ -7,7 +7,7 @@ import (
 
 const (
 	numPieceTypes = 12
-	numSquares = 64
+	numSquares    = 64
 )
 
 var zobristTable [numPieceTypes][numSquares]uint64
@@ -36,21 +36,33 @@ func zobristInit() {
 func pieceToZobristIndex(piece Piece) int {
 	if piece.Color() == PieceColorWhite {
 		switch piece.Type() {
-		case PieceTypePawn: return 0
-		case PieceTypeKnight: return 1
-		case PieceTypeBishop: return 2
-		case PieceTypeRook: return 3
-		case PieceTypeQueen: return 4
-		case PieceTypeKing: return 5
+		case PieceTypePawn:
+			return 0
+		case PieceTypeKnight:
+			return 1
+		case PieceTypeBishop:
+			return 2
+		case PieceTypeRook:
+			return 3
+		case PieceTypeQueen:
+			return 4
+		case PieceTypeKing:
+			return 5
 		}
 	} else {
 		switch piece.Type() {
-		case PieceTypePawn: return 6
-		case PieceTypeKnight: return 7
-		case PieceTypeBishop: return 8
-		case PieceTypeRook: return 9
-		case PieceTypeQueen: return 10
-		case PieceTypeKing: return 11
+		case PieceTypePawn:
+			return 6
+		case PieceTypeKnight:
+			return 7
+		case PieceTypeBishop:
+			return 8
+		case PieceTypeRook:
+			return 9
+		case PieceTypeQueen:
+			return 10
+		case PieceTypeKing:
+			return 11
 		}
 	}
 

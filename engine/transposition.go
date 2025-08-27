@@ -12,11 +12,11 @@ const (
 
 type TTEntry struct {
 	PartialKey uint16
-	Move core.Move
-	Score int16
-	depth int8
-	bound Bound
-	gen uint8
+	Move       core.Move
+	Score      int16
+	depth      int8
+	bound      Bound
+	gen        uint8
 }
 
 type TTBucket struct {
@@ -25,8 +25,8 @@ type TTBucket struct {
 
 type TranspositionalTable struct {
 	Buckets []TTBucket
-	Mask uint64
-	Gen uint8
+	Mask    uint64
+	Gen     uint8
 }
 
 func NewTranspositionalTable(sizeMB int) *TranspositionalTable {
@@ -36,7 +36,7 @@ func NewTranspositionalTable(sizeMB int) *TranspositionalTable {
 	}
 	return &TranspositionalTable{
 		Buckets: make([]TTBucket, numBuckets),
-		Mask: uint64(numBuckets - 1),
+		Mask:    uint64(numBuckets - 1),
 	}
 }
 
@@ -106,7 +106,7 @@ func (tt *TranspositionalTable) Store(key uint64, depth int, score int, bound Bo
 	for i := range b.Entries {
 		if b.Entries[i].PartialKey == pk {
 			if depth >= int(b.Entries[i].depth) || bound == FlagExact {
-				b.Entries[i].Score=ToTTScore(score, 0)
+				b.Entries[i].Score = ToTTScore(score, 0)
 				b.Entries[i].depth = int8(depth)
 				b.Entries[i].bound = bound
 				if move != (core.Move{}) {
@@ -126,7 +126,7 @@ func (tt *TranspositionalTable) Store(key uint64, depth int, score int, bound Bo
 	}
 
 	victim := 0
-	bestScore := 1 << 31 - 1
+	bestScore := 1<<31 - 1
 	for i := range b.Entries {
 		if b.Entries[i].PartialKey == 0 {
 			victim = i
@@ -146,11 +146,11 @@ func (tt *TranspositionalTable) Store(key uint64, depth int, score int, bound Bo
 
 	b.Entries[victim] = TTEntry{
 		PartialKey: pk,
-		Score: ToTTScore(score, 0),
-		depth: int8(depth),
-		bound: bound,
-		Move: move,
-		gen: tt.Gen,
+		Score:      ToTTScore(score, 0),
+		depth:      int8(depth),
+		bound:      bound,
+		Move:       move,
+		gen:        tt.Gen,
 	}
 }
 
