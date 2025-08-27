@@ -98,7 +98,7 @@ func (tt *TranspositionalTable) Probe(key uint64) (bit bool, e TTEntry) {
 	return false, TTEntry{}
 }
 
-func (tt *TranspositionalTable) Store(key uint64, depth int, score int, bound Bound, move core.Move) {
+func (tt *TranspositionalTable) Store(key uint64, depth int, score int, bound Bound, move core.Move, ply int) {
 	idx := tt.index(key)
 	pk := partialKey(key)
 	b := &tt.Buckets[idx]
@@ -106,7 +106,7 @@ func (tt *TranspositionalTable) Store(key uint64, depth int, score int, bound Bo
 	for i := range b.Entries {
 		if b.Entries[i].PartialKey == pk {
 			if depth >= int(b.Entries[i].depth) || bound == FlagExact {
-				b.Entries[i].Score = ToTTScore(score, 0)
+				b.Entries[i].Score = ToTTScore(score, ply)
 				b.Entries[i].depth = int8(depth)
 				b.Entries[i].bound = bound
 				if move != (core.Move{}) {
@@ -146,7 +146,7 @@ func (tt *TranspositionalTable) Store(key uint64, depth int, score int, bound Bo
 
 	b.Entries[victim] = TTEntry{
 		PartialKey: pk,
-		Score:      ToTTScore(score, 0),
+		Score:      ToTTScore(score, ply),
 		depth:      int8(depth),
 		bound:      bound,
 		Move:       move,

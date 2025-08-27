@@ -111,16 +111,16 @@ func (g *Game) Update() error {
 				g.prevMoveFrom = g.dragStart
 				g.prevMoveTo = toSquare
 
-				// go (func() {
-				// 	g.engine.Board = g.Board.Clone()
-				// 	bestMove := g.engine.FindBestMove(time.Millisecond*500, true)
-				// 	if bestMove != nil {
-				// 		g.Board.Push(bestMove)
-				//
-				// 		g.prevMoveFrom = int(bestMove.From)
-				// 		g.prevMoveTo = int(bestMove.To)
-				// 	}
-				// })()
+				go (func() {
+					g.engine.Board = g.Board.Clone()
+					bestMove := g.engine.FindBestMove(time.Millisecond*500, true)
+					if bestMove != nil {
+						g.Board.Push(bestMove)
+
+						g.prevMoveFrom = int(bestMove.From)
+						g.prevMoveTo = int(bestMove.To)
+					}
+				})()
 			}
 		}
 

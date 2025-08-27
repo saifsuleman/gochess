@@ -7,7 +7,6 @@ import (
 const (
 	MateScore     = 30000
 	MateThreshold = MateScore - 1000
-	Bleeding = false
 )
 
 func (e *Engine) negamax(depth int, alpha, beta, rootDepth int) int {
@@ -34,26 +33,24 @@ func (e *Engine) negamax(depth int, alpha, beta, rootDepth int) int {
 
 	// TODO: keep an eye on this, I've found sometimes it makes the engine worse
 	// i don't trust you
-	if Bleeding {
-		isNullWindow := beta-alpha == 1
-		nmpMask := e.Board.AllPieces
-		nmpMask ^= e.Board.PieceBitboards[0][core.PieceTypeKing-1] | e.Board.PieceBitboards[1][core.PieceTypeKing-1]
-		nmpMask ^= e.Board.PieceBitboards[0][core.PieceTypePawn-1] | e.Board.PieceBitboards[1][core.PieceTypePawn-1]
-		if isNullWindow && depth >= 3 && nmpMask != 0 && !e.Board.InCheck(e.Board.WhiteToMove) && e.Evaluate() >= beta {
-			enPassant := e.Board.EnPassantTarget
-			e.Board.EnPassantTarget = 64
-			e.Board.WhiteToMove = !e.Board.WhiteToMove
+	isNullWindow := beta-alpha == 1
+	nmpMask := e.Board.AllPieces
+	nmpMask ^= e.Board.PieceBitboards[0][core.PieceTypeKing-1] | e.Board.PieceBitboards[1][core.PieceTypeKing-1]
+	nmpMask ^= e.Board.PieceBitboards[0][core.PieceTypePawn-1] | e.Board.PieceBitboards[1][core.PieceTypePawn-1]
+	if isNullWindow && depth >= 3 && nmpMask != 0 && !e.Board.InCheck(e.Board.WhiteToMove) && e.Evaluate() >= beta {
+		enPassant := e.Board.EnPassantTarget
+		e.Board.EnPassantTarget = 64
+		e.Board.WhiteToMove = !e.Board.WhiteToMove
 
-			nullScore := -e.negamax(depth-3, -beta, -beta+1, rootDepth) // reduction R=2
+		nullScore := -e.negamax(depth-3, -beta, -beta+1, rootDepth) // reduction R=2
 
-			e.Board.WhiteToMove = !e.Board.WhiteToMove
-			e.Board.EnPassantTarget = enPassant
+		e.Board.WhiteToMove = !e.Board.WhiteToMove
+		e.Board.EnPassantTarget = enPassant
 
-			if nullScore >= beta {
-				depth -= 4
-				if depth <= 0 {
-					return e.quiscence(alpha, beta, rootDepth)
-				}
+		if nullScore >= beta {
+			depth -= 4
+			if depth <= 0 {
+				return e.quiscence(alpha, beta, rootDepth)
 			}
 		}
 	}
@@ -82,7 +79,7 @@ func (e *Engine) negamax(depth int, alpha, beta, rootDepth int) int {
 		}
 
 		if alpha >= beta {
-			e.TT.Store(key, depth, bestScore, FlagLower, bestMove)
+			e.TT.Store(key, depth, bestScore, FlagLower, bestMove, board.Ply)
 			return bestScore
 		}
 	}
@@ -99,12 +96,10 @@ func (e *Engine) negamax(depth int, alpha, beta, rootDepth int) int {
 		board.Push(&move)
 		searchDepth := depth - 1
 
-		if Bleeding {
-			// LMR
-			enemyInCheck := board.InCheck(board.WhiteToMove)
-			if depth >= 3 && !isCapture && !enemyInCheck && i > 3 {
-				searchDepth = depth - 2
-			}
+		// LMR
+		enemyInCheck := board.InCheck(board.WhiteToMove)
+		if depth >= 3 && !isCapture && !enemyInCheck && i > 3 {
+			searchDepth = depth - 2
 		}
 
 		var score int
@@ -148,7 +143,7 @@ func (e *Engine) negamax(depth int, alpha, beta, rootDepth int) int {
 		bound = FlagExact
 	}
 
-	e.TT.Store(key, depth, bestScore, bound, bestMove)
+	e.TT.Store(key, depth, bestScore, bound, bestMove, board.Ply)
 
 	return bestScore
 }
