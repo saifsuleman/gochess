@@ -52,20 +52,20 @@ func NewGame(board *core.Board) *Game {
 	eng := engine.NewEngine(board)
 	game := &Game{Board: board, selected: -1, engine: eng}
 
-	go (func() {
-		time.Sleep(time.Second)
-
-		for {
-			nmp := game.Board.WhiteToMove
-			game.engine = engine.NewEngine(game.Board.Clone())
-			bestMove := game.engine.FindBestMove(time.Millisecond*100, nmp)
-			if bestMove != nil {
-				game.Board.Push(bestMove)
-				game.prevMoveFrom = int(bestMove.From)
-				game.prevMoveTo = int(bestMove.To)
-			}
-		}
-	})()
+	// go (func() {
+	// 	time.Sleep(time.Second)
+	//
+	// 	for {
+	// 		nmp := game.Board.WhiteToMove
+	// 		game.engine = engine.NewEngine(game.Board.Clone())
+	// 		bestMove := game.engine.FindBestMove(time.Millisecond*100, nmp)
+	// 		if bestMove != nil {
+	// 			game.Board.Push(bestMove)
+	// 			game.prevMoveFrom = int(bestMove.From)
+	// 			game.prevMoveTo = int(bestMove.To)
+	// 		}
+	// 	}
+	// })()
 
 	return game
 }
@@ -92,10 +92,17 @@ func (g *Game) Update() error {
 	} else if g.dragging {
 		toSquare := g.xyToSquare(int(g.mouseX)/TILE_SIZE, int(g.mouseY)/TILE_SIZE)
 		if toSquare != -1 && toSquare != g.dragStart {
+			type_ := g.Board.Pieces[g.dragStart].Type()
+			rank := toSquare >> 3
+			promotion := core.PieceNone
+			if type_ == core.PieceTypePawn && (rank == 0 || rank == 7) {
+				promotion = core.PieceTypeQueen | core.Piece(g.Board.Pieces[g.dragStart].Color())
+			}
+
 			move := core.Move{
 				From:      core.Position(g.dragStart),
 				To:        core.Position(toSquare),
-				Promotion: core.PieceNone, // Could add promotion UI later
+				Promotion: promotion, // Could add promotion UI later
 			}
 
 			if g.Board.IsMoveLegal(move) {
@@ -106,7 +113,7 @@ func (g *Game) Update() error {
 
 				go (func() {
 					g.engine.Board = g.Board.Clone()
-					bestMove := g.engine.FindBestMove(time.Millisecond*300, true)
+					bestMove := g.engine.FindBestMove(time.Millisecond*500, true)
 					if bestMove != nil {
 						g.Board.Push(bestMove)
 
@@ -132,6 +139,10 @@ func (g *Game) Update() error {
 			g.prevMoveFrom = -1
 			g.prevMoveTo = -1
 		}
+	} else if inpututil.IsKeyJustPressed(ebiten.KeyU) {
+		g.engine = engine.NewEngine(g.Board.Clone())
+		bestMove := g.engine.FindBestMove(time.Millisecond*100, true)
+		g.Board.Push(bestMove)
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyR) {

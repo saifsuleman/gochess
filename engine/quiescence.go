@@ -13,7 +13,7 @@ func (e *Engine) quiscence(alpha, beta, rootDepth int) (score int) {
 	}
 
 	moves := e.Board.GenerateLegalCaptures()
-	e.OrderMoves(moves, rootDepth)
+	e.OrderMovesQ(moves, rootDepth)
 	for _, move := range moves {
 		e.Board.Push(&move)
 		score := -e.quiscence(-beta, -alpha, rootDepth)
@@ -30,3 +30,4 @@ func (e *Engine) quiscence(alpha, beta, rootDepth int) (score int) {
 
 	return alpha
 }
+

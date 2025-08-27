@@ -19,15 +19,20 @@ TODO:
 - Basic material exchange evaluation [DONE]
 - Implement piece-square-tables [DONE]
 - Implement killer moves [DONE]
+- Implement SEE on quiescence search [DONE]
 
-- Implement opening book
-- Implement endgame tablebases
 - Implement passed pawn evaluation
 - Implement king safety evaluation
-- Implement SEE
-- Implement dynamic time budget allocation
-- penalize repetitions
+- Implement mobility evaluation
+- Implement outposts evaluation
+- Repetition penalization
 
+- Implement UCI protocol
+- Implement opening book
+- Implement endgame tablebases
+- Implement dynamic time budget allocation
+- Build unit tests
+- Measure ELO impact of each feature in isolation
 - Implement multi-threading
 */
 
@@ -60,6 +65,8 @@ func (e *Engine) FindBestMove(timeBudget time.Duration, nmp bool) *core.Move {
 	moves := e.Board.GenerateLegalMoves()
 	if len(moves) == 0 {
 		return nil
+	} else if len(moves) == 1 {
+		return &moves[0] // I mean, no point in searching if there's only one move
 	}
 
 	e.OrderMoves(moves, 0)
