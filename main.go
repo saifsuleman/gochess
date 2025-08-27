@@ -4,6 +4,7 @@ import (
 	"gochess/core"
 	"gochess/fen"
 	"gochess/game"
+	"gochess/uci"
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
@@ -18,11 +19,13 @@ func sqToPen(sq core.Position) string {
 }
 
 func main() {
-	board, err := fen.LoadFromFEN(FEN)
-	if err != nil {
-		log.Fatal(err)
-	}
-	play(board)
+	uci.RunUCI()
+
+	// board, err := fen.LoadFromFEN(FEN)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// play(board)
 }
 
 func play(board *core.Board) {

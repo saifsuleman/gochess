@@ -48,10 +48,7 @@ func (e *Engine) negamax(depth int, alpha, beta, rootDepth int) int {
 		e.Board.EnPassantTarget = enPassant
 
 		if nullScore >= beta {
-			depth -= 4
-			if depth <= 0 {
-				return e.quiscence(alpha, beta, rootDepth)
-			}
+			return nullScore
 		}
 	}
 
@@ -99,7 +96,7 @@ func (e *Engine) negamax(depth int, alpha, beta, rootDepth int) int {
 		// LMR
 		enemyInCheck := board.InCheck(board.WhiteToMove)
 		if depth >= 3 && !isCapture && !enemyInCheck && i > 3 {
-			searchDepth = depth - 2
+			searchDepth-- // redurection R=1
 		}
 
 		var score int

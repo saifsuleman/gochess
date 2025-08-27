@@ -25,11 +25,12 @@ TODO:
 - Implement king safety evaluation
 - Implement mobility evaluation
 - Implement outposts evaluation
-- Repetition penalization
 
-- Implement UCI protocol
+- Repetition penalization
 - Implement opening book
 - Implement endgame tablebases
+
+- Implement UCI protocol
 - Implement dynamic time budget allocation
 - Build unit tests
 - Measure ELO impact of each feature in isolation
