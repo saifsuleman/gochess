@@ -90,7 +90,7 @@ func (g *Game) Update() error {
 
 				go (func() {
 					g.engine.Board = g.Board.Clone()
-					bestMove := g.engine.FindBestMove(time.Millisecond * 500)
+					bestMove := g.engine.FindBestMove(time.Millisecond * 1000)
 					if bestMove != nil {
 						g.Board.Push(bestMove)
 
