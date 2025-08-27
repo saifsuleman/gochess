@@ -29,6 +29,12 @@ TODO:
 type Engine struct {
 	Board *core.Board
 	TT *TranspositionalTable
+	Deadline time.Time
+	NodesSearched uint64
+}
+
+func (e *Engine) TimeUp() bool {
+	return time.Now().After(e.Deadline)
 }
 
 func NewEngine(board *core.Board) *Engine {
@@ -38,6 +44,9 @@ func NewEngine(board *core.Board) *Engine {
 func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 	start := time.Now()
 
+	e.Deadline = start.Add(timeBudget)
+	e.NodesSearched = 0
+
 	moves := e.Board.GenerateLegalMoves()
 	if len(moves) == 0 {
 		return nil
@@ -45,11 +54,15 @@ func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 
 	e.OrderMoves(moves)
 
-	var maxDepth int = 6 // time budget will take over before we ever finish thsi search
+	var maxDepth int = 20 // time budget will take over before we ever finish thsi search
 	var bestMove core.Move
 	var bestValue int
 
 	for depth := 1; depth <= maxDepth; depth++ {
+		if e.TimeUp() {
+			break
+		}
+
 		currentBestMove := moves[0]
 		currentBestValue := math.MinInt
 
@@ -82,7 +95,7 @@ func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 	}
 
 	elapsed := time.Since(start)
-	fmt.Printf("Best move: %v, Value: %d, Time taken: %s\n", bestMove, bestValue, elapsed)
+	fmt.Printf("Best move: %v, Value: %d, nodes searched: %d, Time taken: %s\n", bestMove, bestValue, e.NodesSearched, elapsed)
 
 	return &bestMove
 }

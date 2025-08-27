@@ -8,6 +8,8 @@ const (
 )
 
 func (e *Engine) negamax(depth int, alpha, beta int) int {
+	e.NodesSearched++
+
 	originalAlpha := alpha
 	key := e.Board.ComputeZobristHash()
 
@@ -18,7 +20,7 @@ func (e *Engine) negamax(depth int, alpha, beta int) int {
 		ttMove = m
 	}
 
-	if depth <= 0 {
+	if depth <= 0 || e.TimeUp() {
 		return e.quiscence(alpha, beta)
 	}
 

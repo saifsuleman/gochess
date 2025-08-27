@@ -1,6 +1,7 @@
 package engine
 
 func (e *Engine) quiscence(alpha, beta int) (score int) {
+	e.NodesSearched++
 	standPat := e.Evaluate()
 
 	if standPat >= beta {
