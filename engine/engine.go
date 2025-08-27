@@ -29,12 +29,16 @@ TODO:
 - Implement multi-threading
 */
 
+const maxDepth = 30
+
 type Engine struct {
 	Board *core.Board
 	TT *TranspositionalTable
 	Deadline time.Time
 	NodesSearched uint64
 	Aborted bool
+	KillerMoves [maxDepth][2]core.Move
+	HistoryTable [64][64]int
 }
 
 func (e *Engine) TimeUp() bool {
@@ -56,9 +60,8 @@ func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 		return nil
 	}
 
-	e.OrderMoves(moves)
+	e.OrderMoves(moves, 0)
 
-	var maxDepth int = 30 // time budget will take over before we ever finish thsi search
 	var bestMove core.Move
 	var bestValue int
 	depthReached := 0
@@ -74,7 +77,7 @@ func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 		for _, move := range moves {
 			e.Board.Push(&move)
 			e.Aborted = false
-			moveValue := -e.negamax(depth-1, math.MinInt, math.MaxInt)
+			moveValue := -e.negamax(depth-1, math.MinInt, math.MaxInt, depth)
 			e.Board.Pop()
 
 			if e.Aborted {
@@ -108,4 +111,11 @@ func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 	fmt.Printf("Best move: %v, depth: %d, nodes searched: %d at depth %d, Time taken: %s\n", bestMove, bestValue, e.NodesSearched, depthReached, elapsed)
 
 	return &bestMove
+}
+
+func (e *Engine) addKillerMove(move core.Move, depth int) {
+	if e.KillerMoves[depth][0] != move {
+		e.KillerMoves[depth][1] = e.KillerMoves[depth][0]
+		e.KillerMoves[depth][0] = move
+	}
 }

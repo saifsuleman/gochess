@@ -33,8 +33,27 @@ func (e *Engine) MoveScore(move core.Move) (score int) {
 	return score
 }
 
-func (e *Engine) OrderMoves(moves []core.Move) {
+func (e *Engine) OrderMoves(moves []core.Move, depth int) {
 	slices.SortStableFunc(moves, func(a, b core.Move) int {
-		return e.MoveScore(b) - e.MoveScore(a)
+		scoreA := e.MoveScore(a) + e.killerHistoryScore(a, depth)
+		scoreB := e.MoveScore(b) + e.killerHistoryScore(b, depth)
+		return scoreB - scoreA // Descending order
 	})
+}
+
+func (e *Engine) killerHistoryScore(move core.Move, depth int) int {
+	if move == e.KillerMoves[depth][0] {
+		return 100_000
+	}
+
+	if move == e.KillerMoves[depth][1] {
+		return 80_000
+	}
+
+	isCapture := (move.To == e.Board.EnPassantTarget) || ((1 << move.To) & e.Board.AllPieces) != 0
+	if !isCapture {
+		return e.HistoryTable[move.From][move.To]
+	}
+
+	return 0
 }

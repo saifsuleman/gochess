@@ -1,6 +1,6 @@
 package engine
 
-func (e *Engine) quiscence(alpha, beta int) (score int) {
+func (e *Engine) quiscence(alpha, beta, rootDepth int) (score int) {
 	e.NodesSearched++
 	standPat := e.Evaluate()
 
@@ -13,10 +13,10 @@ func (e *Engine) quiscence(alpha, beta int) (score int) {
 	}
 
 	moves := e.Board.GenerateLegalCaptures()
-	e.OrderMoves(moves)
+	e.OrderMoves(moves, rootDepth)
 	for _, move := range moves {
 		e.Board.Push(&move)
-		score := -e.quiscence(-beta, -alpha)
+		score := -e.quiscence(-beta, -alpha, rootDepth)
 		e.Board.Pop()
 
 		if score >= beta {
