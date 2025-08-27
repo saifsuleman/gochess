@@ -44,10 +44,7 @@ func (e *Engine) negamax(depth int, alpha, beta, rootDepth int) int {
 		e.Board.WhiteToMove = !e.Board.WhiteToMove
 		e.Board.EnPassantTarget = enPassant
 		if nullScore >= beta {
-			verified := e.negamax(depth-3, alpha, beta, rootDepth) // verify with full depth
-			if verified >= beta {
-				return verified
-			}
+			return nullScore
 		}
 	}
 
