@@ -7,14 +7,13 @@ const (
 	MateThreshold = MateScore - 1000
 )
 
-func (e *Engine) negamax(depth int, alpha, beta int) (score int, totalNodes int) {
-	totalNodes = 1
+func (e *Engine) negamax(depth int, alpha, beta int) int {
 	originalAlpha := alpha
 	key := e.Board.ComputeZobristHash()
 
 	var ttMove core.Move
 	if ok, score, _, m := e.TT.ProbeCut(key, depth, alpha, beta, e.Board.Ply); ok {
-		return score, 1
+		return score
 	} else {
 		ttMove = m
 	}
@@ -24,12 +23,11 @@ func (e *Engine) negamax(depth int, alpha, beta int) (score int, totalNodes int)
 	}
 
 	if depth >= 3 && !e.Board.InCheck(e.Board.WhiteToMove) {
-		e.Board.WhiteToMove = !e.Board.WhiteToMove
-		nullScore, nodes := e.negamax(depth-3, -beta, -beta+1) // reduction R=2
-		nullScore = -nullScore
+		e.Board.WhiteToMove = !e.Board.WhiteToMove // TODO: need to restore state better
+		nullScore := -e.negamax(depth-3, -beta, -beta+1) // reduction R=2
 		e.Board.WhiteToMove = !e.Board.WhiteToMove
 		if nullScore >= beta {
-			return nullScore, totalNodes + nodes
+			return nullScore
 		}
 	}
 
@@ -37,9 +35,9 @@ func (e *Engine) negamax(depth int, alpha, beta int) (score int, totalNodes int)
 	moves := board.GenerateLegalMoves()
 	if len(moves) == 0 {
 		if board.InCheck(board.WhiteToMove) {
-			return -MateScore + board.Ply, 0 // checkmate
+			return -MateScore + board.Ply // checkmate
 		}
-		return 0, 0 // stalemate
+		return 0 // stalemate
 	}
 
 	var bestMove core.Move
@@ -54,14 +52,8 @@ func (e *Engine) negamax(depth int, alpha, beta int) (score int, totalNodes int)
 
 	if ttMove != (core.Move{}) {
 		board.Push(&ttMove)
-		score, nodes := e.negamax(depth-1, -beta, -alpha)
-		totalNodes += nodes
-		score = -score
+		score := -e.negamax(depth-1, -beta, -alpha)
 		board.Pop()
-
-		if e.TimeUp() {
-			return score, totalNodes
-		}
 
 		bestScore = score
 		bestMove = ttMove
@@ -70,7 +62,7 @@ func (e *Engine) negamax(depth int, alpha, beta int) (score int, totalNodes int)
 		}
 		if alpha >= beta {
 			e.TT.Store(key, depth, bestScore, FlagLower, bestMove)
-			return bestScore, totalNodes
+			return bestScore
 		}
 	}
 
@@ -87,26 +79,17 @@ func (e *Engine) negamax(depth int, alpha, beta int) (score int, totalNodes int)
 			searchDepth = depth - 2
 		}
 
+		var score int
 		if i == 0 {
-			var nodes int
-			score, nodes = e.negamax(searchDepth, -beta, -alpha)
-			totalNodes += nodes
-			score = -score
+			score = -e.negamax(searchDepth, -beta, -alpha)
 		} else {
-			score, nodes := e.negamax(searchDepth, -alpha - 1, -alpha)
-			score = -score
+			score = -e.negamax(searchDepth, -alpha - 1, -alpha)
 			if score > alpha && score < beta {
-				score, nodes = e.negamax(searchDepth, -beta, -alpha)
-				score = -score
+				score = -e.negamax(searchDepth, -beta, -alpha)
 			}
-			totalNodes += nodes
 		}
 
 		board.Pop()
-
-		if e.TimeUp() {
-			return bestScore, totalNodes
-		}
 
 		if score > bestScore {
 			bestScore = score
@@ -133,5 +116,5 @@ func (e *Engine) negamax(depth int, alpha, beta int) (score int, totalNodes int)
 
 	e.TT.Store(key, depth, bestScore, bound, bestMove)
 
-	return bestScore, totalNodes
+	return bestScore
 }
