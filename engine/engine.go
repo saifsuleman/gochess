@@ -36,7 +36,7 @@ TODO:
 - Implement multi-threading
 */
 
-const maxDepth = 24
+const maxDepth = 4
 
 type Engine struct {
 	Board         *core.Board
