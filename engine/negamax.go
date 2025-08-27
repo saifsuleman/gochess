@@ -29,16 +29,19 @@ func (e *Engine) negamax(depth int, alpha, beta, rootDepth int) int {
 		return e.quiscence(alpha, beta, rootDepth)
 	}
 
-	// we should definitely have some protections against zugzwang somehow
-	if depth >= 3 && !e.Board.InCheck(e.Board.WhiteToMove) {
-		// TODO: also reset en passant counter, and half-clock full-clock counter when we implement them
-		e.Board.WhiteToMove = !e.Board.WhiteToMove
-		nullScore := -e.negamax(depth-3, -beta, -beta+1, rootDepth) // reduction R=2
-		e.Board.WhiteToMove = !e.Board.WhiteToMove
-		if nullScore >= beta {
-			return nullScore
-		}
-	}
+	// TODO: we should definitely have some protections against zugzwang somehow
+	// note: this appears to cause a significant amount of blunders in the opening... this should be double checked
+	// for now let's not use it, because the engine seems really strong without it
+
+	// if depth >= 3 && !e.Board.InCheck(e.Board.WhiteToMove) {
+	// 	// TODO: also reset en passant counter, and half-clock full-clock counter when we implement them
+	// 	e.Board.WhiteToMove = !e.Board.WhiteToMove
+	// 	nullScore := -e.negamax(depth-3, -beta, -beta+1, rootDepth) // reduction R=2
+	// 	e.Board.WhiteToMove = !e.Board.WhiteToMove
+	// 	if nullScore >= beta {
+	// 		return nullScore
+	// 	}
+	// }
 
 	board := e.Board
 	moves := board.GenerateLegalMoves()

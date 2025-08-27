@@ -29,7 +29,7 @@ TODO:
 - Implement multi-threading
 */
 
-const maxDepth = 30
+const maxDepth = 7
 
 type Engine struct {
 	Board *core.Board
@@ -37,7 +37,7 @@ type Engine struct {
 	Deadline time.Time
 	NodesSearched uint64
 	Aborted bool
-	KillerMoves [maxDepth][2]core.Move
+	KillerMoves [maxDepth + 1][2]core.Move
 	HistoryTable [64][64]int
 }
 
