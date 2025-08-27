@@ -9,20 +9,21 @@ import (
 
 /*
 TODO:
-- Implement a more sophisticated evaluation function
 - Implement iterative deepening [DONE]
 - Implement move ordering [DONE]
 - Implement transposition tables [DONE]
 - Implement quiescence search [DONE]
 - Implement null move pruning [DONE]
 - Implement late move reductions (LMR) [DONE]
+- Implement time management [DONE]
+- Basic material exchange evaluation [DONE]
+
 - Implement killer moves
 - Implement opening book
 - Implement endgame tablebases
 - Implement passed pawn evaluation
 - Implement king safety evaluation
 - Implement piece-square-tables
-- Implement time management
 - Implement multi-threading
 */
 
@@ -57,6 +58,7 @@ func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 	var maxDepth int = 20 // time budget will take over before we ever finish thsi search
 	var bestMove core.Move
 	var bestValue int
+	depthReached := 0
 
 	for depth := 1; depth <= maxDepth; depth++ {
 		if e.TimeUp() {
@@ -91,11 +93,11 @@ func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 			}
 		}
 
-		// TODO: some form of check to see if we have enough time to continue
+		depthReached = depth
 	}
 
 	elapsed := time.Since(start)
-	fmt.Printf("Best move: %v, Value: %d, nodes searched: %d, Time taken: %s\n", bestMove, bestValue, e.NodesSearched, elapsed)
+	fmt.Printf("Best move: %v, depth: %d, nodes searched: %d at depth %d, Time taken: %s\n", bestMove, bestValue, e.NodesSearched, depthReached, elapsed)
 
 	return &bestMove
 }
