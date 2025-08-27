@@ -58,6 +58,11 @@ func (e *Engine) negamax(depth int, alpha, beta int) (score int, totalNodes int)
 		totalNodes += nodes
 		score = -score
 		board.Pop()
+
+		if e.TimeUp() {
+			return score, totalNodes
+		}
+
 		bestScore = score
 		bestMove = ttMove
 		if score > alpha {
@@ -98,6 +103,10 @@ func (e *Engine) negamax(depth int, alpha, beta int) (score int, totalNodes int)
 		}
 
 		board.Pop()
+
+		if e.TimeUp() {
+			return bestScore, totalNodes
+		}
 
 		if score > bestScore {
 			bestScore = score

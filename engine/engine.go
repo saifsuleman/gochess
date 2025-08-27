@@ -29,6 +29,11 @@ TODO:
 type Engine struct {
 	Board *core.Board
 	TT *TranspositionalTable
+	Deadline time.Time
+}
+
+func (e *Engine) TimeUp() bool {
+	return time.Now().After(e.Deadline)
 }
 
 func NewEngine(board *core.Board) *Engine {
@@ -37,7 +42,7 @@ func NewEngine(board *core.Board) *Engine {
 
 func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 	start := time.Now()
-	deadline := start.Add(timeBudget)
+	e.Deadline = start.Add(timeBudget)
 
 	moves := e.Board.GenerateLegalMoves()
 	if len(moves) == 0 {
@@ -46,7 +51,7 @@ func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 
 	e.OrderMoves(moves)
 
-	var maxDepth int = 6
+	var maxDepth int = 20 // time budget will take over before we ever finish thsi search
 	var bestMove core.Move
 	var bestValue int
 	var totalNodes int
@@ -54,6 +59,7 @@ func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 	for depth := 1; depth <= maxDepth; depth++ {
 		currentBestMove := moves[0]
 		currentBestValue := math.MinInt
+		completedAllMoves := true
 
 		for _, move := range moves {
 			e.Board.Push(&move)
@@ -61,6 +67,11 @@ func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 			moveValue = -moveValue
 			totalNodes += nodes
 			e.Board.Pop()
+
+			if e.TimeUp() {
+				completedAllMoves = false
+				break
+			}
 
 			if moveValue > currentBestValue {
 				currentBestValue = moveValue
@@ -70,10 +81,11 @@ func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 			if currentBestValue >= MateThreshold {
 				break
 			}
+		}
 
-			if time.Now().After(deadline) {
-				break
-			}
+		// We don't use this result if its not a full completion, because that's unreliable
+		if !completedAllMoves {
+			break
 		}
 
 		bestMove = currentBestMove
@@ -85,6 +97,8 @@ func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 				break
 			}
 		}
+
+		// TODO: some form of check to see if we have enough time to continue
 	}
 
 	elapsed := time.Since(start)
