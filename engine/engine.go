@@ -29,7 +29,7 @@ TODO:
 - Implement multi-threading
 */
 
-const maxDepth = 7
+const maxDepth = 24
 
 type Engine struct {
 	Board *core.Board
@@ -62,7 +62,7 @@ func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 
 	e.OrderMoves(moves, 0)
 
-	var bestMove core.Move
+	var bestMove core.Move = moves[0]
 	var bestValue int
 	depthReached := 0
 
@@ -73,6 +73,7 @@ func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 
 		currentBestMove := moves[0]
 		currentBestValue := math.MinInt
+		completedSearch := true
 
 		for _, move := range moves {
 			e.Board.Push(&move)
@@ -81,6 +82,7 @@ func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 			e.Board.Pop()
 
 			if e.Aborted {
+				completedSearch = false
 				break // Do not use a partially searched path
 			}
 
@@ -94,8 +96,13 @@ func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 			}
 		}
 
+		if !completedSearch {
+			break
+		}
+
 		bestMove = currentBestMove
 		bestValue = currentBestValue
+		depthReached = depth
 
 		for i, m := range moves {
 			if m == bestMove {
@@ -103,8 +110,6 @@ func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 				break
 			}
 		}
-
-		depthReached = depth
 	}
 
 	elapsed := time.Since(start)

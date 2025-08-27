@@ -1,6 +1,8 @@
 package engine
 
-import "gochess/core"
+import (
+	"gochess/core"
+)
 
 const (
 	MateScore = 30000
@@ -33,15 +35,20 @@ func (e *Engine) negamax(depth int, alpha, beta, rootDepth int) int {
 	// note: this appears to cause a significant amount of blunders in the opening... this should be double checked
 	// for now let's not use it, because the engine seems really strong without it
 
-	// if depth >= 3 && !e.Board.InCheck(e.Board.WhiteToMove) {
-	// 	// TODO: also reset en passant counter, and half-clock full-clock counter when we implement them
-	// 	e.Board.WhiteToMove = !e.Board.WhiteToMove
-	// 	nullScore := -e.negamax(depth-3, -beta, -beta+1, rootDepth) // reduction R=2
-	// 	e.Board.WhiteToMove = !e.Board.WhiteToMove
-	// 	if nullScore >= beta {
-	// 		return nullScore
-	// 	}
-	// }
+	if depth >= 5 && !e.Board.InCheck(e.Board.WhiteToMove) {
+		enPassant := e.Board.EnPassantTarget
+		e.Board.EnPassantTarget = 64
+		e.Board.WhiteToMove = !e.Board.WhiteToMove
+		nullScore := -e.negamax(depth-3, -beta, -beta+1, rootDepth) // reduction R=2
+		e.Board.WhiteToMove = !e.Board.WhiteToMove
+		e.Board.EnPassantTarget = enPassant
+		if nullScore >= beta {
+			verified := e.negamax(depth-3, alpha, beta, rootDepth) // verify with full depth
+			if verified >= beta {
+				return verified
+			}
+		}
+	}
 
 	board := e.Board
 	moves := board.GenerateLegalMoves()
