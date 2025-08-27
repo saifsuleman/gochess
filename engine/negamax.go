@@ -29,15 +29,15 @@ func (e *Engine) negamax(depth int, alpha, beta int) int {
 		return e.quiscence(alpha, beta)
 	}
 
-	// Null move pruning
-	// if depth >= 3 && !e.Board.InCheck(e.Board.WhiteToMove) {
-	// 	e.Board.WhiteToMove = !e.Board.WhiteToMove // TODO: need to restore state better
-	// 	nullScore := -e.negamax(depth-3, -beta, -beta+1) // reduction R=2
-	// 	e.Board.WhiteToMove = !e.Board.WhiteToMove
-	// 	if nullScore >= beta {
-	// 		return nullScore
-	// 	}
-	// }
+	if depth >= 3 && !e.Board.InCheck(e.Board.WhiteToMove) {
+		// TODO: also reset en passant counter, and half-clock full-clock counter when we implement them
+		e.Board.WhiteToMove = !e.Board.WhiteToMove
+		nullScore := -e.negamax(depth-3, -beta, -beta+1) // reduction R=2
+		e.Board.WhiteToMove = !e.Board.WhiteToMove
+		if nullScore >= beta {
+			return nullScore
+		}
+	}
 
 	board := e.Board
 	moves := board.GenerateLegalMoves()

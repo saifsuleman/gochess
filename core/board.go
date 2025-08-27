@@ -343,6 +343,24 @@ func (b *Board) ToAlgebraNotation(move Move) string {
 	return string(s)
 }
 
+func (b *Board) Equals(other *Board) bool {
+	if b.WhiteToMove != other.WhiteToMove {
+		return false
+	}
+	if b.EnPassantTarget != other.EnPassantTarget {
+		return false
+	}
+	if b.CastlingRights != other.CastlingRights {
+		return false
+	}
+	for i := range 64 {
+		if b.Pieces[i] != other.Pieces[i] {
+			return false
+		}
+	}
+	return true
+}
+
 func (b *Board) Clone() *Board {
 	clone := NewBoard()
 	copy(clone.Pieces[:], b.Pieces[:])
