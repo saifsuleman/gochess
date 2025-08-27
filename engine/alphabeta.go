@@ -68,6 +68,7 @@ func (e *Engine) negamax(depth int, alpha, beta int) int {
 		}
 	}
 
+	e.OrderMoves(moves)
 	for i, move := range moves {
 		if move == ttMove {
 			continue
