@@ -141,8 +141,10 @@ func (g *Game) Update() error {
 		}
 	} else if inpututil.IsKeyJustPressed(ebiten.KeyU) {
 		g.engine = engine.NewEngine(g.Board.Clone())
-		bestMove := g.engine.FindBestMove(time.Millisecond*10000, true)
-		g.Board.Push(bestMove)
+		bestMove := g.engine.FindBestMove(time.Millisecond*1000, true)
+		if bestMove != nil {
+			g.Board.Push(bestMove)
+		}
 	}
 
 	if inpututil.IsKeyJustPressed(ebiten.KeyR) {
