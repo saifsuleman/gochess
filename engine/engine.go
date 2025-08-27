@@ -18,13 +18,14 @@ TODO:
 - Implement time management [DONE]
 - Basic material exchange evaluation [DONE]
 - Implement piece-square-tables [DONE]
+- Implement killer moves [DONE]
 
-- Implement killer moves
 - Implement opening book
 - Implement endgame tablebases
 - Implement passed pawn evaluation
 - Implement king safety evaluation
 - Implement SEE
+- Implement dynamic time budget allocation
 
 - Implement multi-threading
 */
