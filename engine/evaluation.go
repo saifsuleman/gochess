@@ -4,7 +4,7 @@ import (
 	"gochess/core"
 )
 
-func (e *Engine) Evaluate(sign int) int {
+func (e *Engine) Evaluate() int {
 	score := 0
 	mask := e.Board.AllPieces
 	for mask != 0 {
@@ -17,7 +17,12 @@ func (e *Engine) Evaluate(sign int) int {
 			score -= value
 		}
 	}
-	return score * sign
+
+	if e.Board.WhiteToMove {
+		return score
+	} else {
+		return -score
+	}
 }
 
 func (e *Engine) PieceValue(piece core.Piece) int {

@@ -1,13 +1,13 @@
 package game
 
 import (
-	"fmt"
 	"gochess/core"
 	"gochess/engine"
 	"gochess/fen"
 	"image"
 	"image/color"
 	"log"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -90,18 +90,14 @@ func (g *Game) Update() error {
 
 				go (func() {
 					g.engine.Board = g.Board.Clone()
-					bestMove := g.engine.FindBestMove()
+					bestMove := g.engine.FindBestMove(time.Second * 3)
 					if bestMove != nil {
 						g.Board.Push(bestMove)
+
+						g.prevMoveFrom = int(bestMove.From)
+						g.prevMoveTo = int(bestMove.To)
 					}
 				})()
-			} else {
-				occW := ((g.Board.WhitePieces)>>move.To)&1 == 1
-				occB := ((g.Board.BlackPieces)>>move.To)&1 == 1
-				occA := ((g.Board.AllPieces)>>move.To)&1 == 1
-				fmt.Println("white pieces occ:", occW)
-				fmt.Println("black pieces occ:", occB)
-				fmt.Println("all pieces occ:", occA)
 			}
 		}
 

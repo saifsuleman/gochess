@@ -36,6 +36,7 @@ type Board struct {
 	EnPassantTarget Position
 	CastlingRights  uint8
 	MoveHistory     []MoveHistoryEntry
+	Ply 						int
 }
 
 func NewBoard() *Board {
@@ -195,6 +196,7 @@ func (b *Board) Push(move *Move) {
 
 	b.EnPassantTarget = enPassantTarget
 	b.WhiteToMove = !b.WhiteToMove
+	b.Ply++
 }
 
 func (b *Board) Pop() {
@@ -255,6 +257,7 @@ func (b *Board) Pop() {
 	b.WhiteToMove = !b.WhiteToMove
 	b.EnPassantTarget = lastMove.EnPassantTarget
 	b.CastlingRights = lastMove.CastlingRights
+	b.Ply--
 }
 
 func (b *Board) RemovePiece(pos Position, piece Piece) {

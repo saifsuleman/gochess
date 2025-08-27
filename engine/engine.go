@@ -10,29 +10,34 @@ import (
 /*
 TODO:
 - Implement a more sophisticated evaluation function
-- Implement iterative deepening
-- Implement move ordering
-- Implement transposition tables
-- Implement quiescence search
+- Implement iterative deepening [DONE]
+- Implement move ordering [DONE]
+- Implement transposition tables [DONE]
+- Implement quiescence search [DONE]
+- Implement null move pruning [DONE]
+- Implement late move reductions (LMR) [DONE]
+- Implement killer moves
 - Implement opening book
 - Implement endgame tablebases
 - Implement passed pawn evaluation
 - Implement king safety evaluation
-- Implement piece-square tables
+- Implement piece-square-tables
 - Implement time management
 - Implement multi-threading
 */
 
 type Engine struct {
 	Board *core.Board
+	TT *TranspositionalTable
 }
 
 func NewEngine(board *core.Board) *Engine {
-	return &Engine{Board: board}
+	return &Engine{Board: board, TT: NewTranspositionalTable(256)}
 }
 
-func (e *Engine) FindBestMove() *core.Move {
+func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 	start := time.Now()
+	deadline := start.Add(timeBudget)
 
 	moves := e.Board.GenerateLegalMoves()
 	if len(moves) == 0 {
@@ -41,23 +46,49 @@ func (e *Engine) FindBestMove() *core.Move {
 
 	e.OrderMoves(moves)
 
-	bestMove := moves[0]
-	bestValue := math.MinInt
-	depth := 5
+	var maxDepth int = 6
+	var bestMove core.Move
+	var bestValue int
+	var totalNodes int
 
-	for _, move := range moves {
-		e.Board.Push(&move)
-		moveValue := -e.negamax(depth-1, math.MinInt, math.MaxInt)
-		e.Board.Pop()
+	for depth := 1; depth <= maxDepth; depth++ {
+		currentBestMove := moves[0]
+		currentBestValue := math.MinInt
 
-		if moveValue > bestValue {
-			bestValue = moveValue
-			bestMove = move
+		for _, move := range moves {
+			e.Board.Push(&move)
+			moveValue, nodes := e.negamax(depth-1, math.MinInt, math.MaxInt)
+			moveValue = -moveValue
+			totalNodes += nodes
+			e.Board.Pop()
+
+			if moveValue > currentBestValue {
+				currentBestValue = moveValue
+				currentBestMove = move
+			}
+
+			if currentBestValue >= MateThreshold {
+				break
+			}
+
+			if time.Now().After(deadline) {
+				break
+			}
+		}
+
+		bestMove = currentBestMove
+		bestValue = currentBestValue
+
+		for i, m := range moves {
+			if m == bestMove {
+				moves[0], moves[i] = moves[i], moves[0]
+				break
+			}
 		}
 	}
 
 	elapsed := time.Since(start)
-	fmt.Printf("Best move: %v, Value: %d, Time taken: %s\n", bestMove, bestValue, elapsed)
+	fmt.Printf("Best move: %v, Value: %d, Nodes: %d, Time taken: %s\n", bestMove, bestValue, totalNodes, elapsed)
 
 	return &bestMove
 }

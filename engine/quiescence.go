@@ -1,17 +1,10 @@
 package engine
 
-func (e *Engine) quiscence(alpha, beta int) int {
-	var sign int
-	if e.Board.WhiteToMove {
-		sign = 1
-	} else {
-		sign = -1
-	}
-
-	standPat := e.Evaluate(sign)
+func (e *Engine) quiscence(alpha, beta int) (score int, nodes int) {
+	standPat := e.Evaluate()
 
 	if standPat >= beta {
-		return beta
+		return beta, 1
 	}
 
 	if standPat > alpha {
@@ -22,11 +15,12 @@ func (e *Engine) quiscence(alpha, beta int) int {
 	e.OrderMoves(moves)
 	for _, move := range moves {
 		e.Board.Push(&move)
-		score := -e.quiscence(-beta, -alpha)
+		score, nodes := e.quiscence(-beta, -alpha)
+		score = -score
 		e.Board.Pop()
 
 		if score >= beta {
-			return score
+			return score, nodes
 		}
 
 		if score > alpha {
@@ -34,5 +28,5 @@ func (e *Engine) quiscence(alpha, beta int) int {
 		}
 	}
 
-	return alpha
+	return alpha, nodes
 }
