@@ -31,11 +31,12 @@ func (e *Engine) negamax(depth int, alpha, beta, rootDepth int) int {
 		return e.quiscence(alpha, beta, rootDepth)
 	}
 
-	// TODO: we should definitely have some protections against zugzwang somehow
-	// note: this appears to cause a significant amount of blunders in the opening... this should be double checked
-	// for now let's not use it, because the engine seems really strong without it
-
-	if depth >= 5 && !e.Board.InCheck(e.Board.WhiteToMove) {
+	// TODO: keep an eye on this, I've found sometimes it makes the engine worse
+	isNullWindow := beta - alpha == 1
+	nmpMask := e.Board.AllPieces
+	nmpMask ^= e.Board.PieceBitboards[0][core.PieceTypeKing - 1] | e.Board.PieceBitboards[1][core.PieceTypeKing - 1]
+	nmpMask ^= e.Board.PieceBitboards[0][core.PieceTypePawn - 1] | e.Board.PieceBitboards[1][core.PieceTypePawn - 1]
+	if isNullWindow && depth >= 3 && nmpMask != 0 && !e.Board.InCheck(e.Board.WhiteToMove) && e.Evaluate() >= beta  {
 		enPassant := e.Board.EnPassantTarget
 		e.Board.EnPassantTarget = 64
 		e.Board.WhiteToMove = !e.Board.WhiteToMove
