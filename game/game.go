@@ -49,8 +49,24 @@ type Game struct {
 }
 
 func NewGame(board *core.Board) *Game {
-	engine := engine.NewEngine(board)
-	game := &Game{Board: board, selected: -1, engine: engine}
+	eng := engine.NewEngine(board)
+	game := &Game{Board: board, selected: -1, engine: eng}
+
+	go (func() {
+		time.Sleep(time.Second)
+
+		for {
+			nmp := game.Board.WhiteToMove
+			game.engine = engine.NewEngine(game.Board.Clone())
+			bestMove := game.engine.FindBestMove(time.Millisecond * 100, nmp)
+			if bestMove != nil {
+				game.Board.Push(bestMove)
+				game.prevMoveFrom = int(bestMove.From)
+				game.prevMoveTo = int(bestMove.To)
+			}
+		}
+	})()
+
 	return game
 }
 
@@ -90,7 +106,7 @@ func (g *Game) Update() error {
 
 				go (func() {
 					g.engine.Board = g.Board.Clone()
-					bestMove := g.engine.FindBestMove(time.Millisecond * 300)
+					bestMove := g.engine.FindBestMove(time.Millisecond * 300, true)
 					if bestMove != nil {
 						g.Board.Push(bestMove)
 

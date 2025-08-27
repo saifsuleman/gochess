@@ -26,6 +26,7 @@ TODO:
 - Implement king safety evaluation
 - Implement SEE
 - Implement dynamic time budget allocation
+- penalize repetitions
 
 - Implement multi-threading
 */
@@ -50,7 +51,7 @@ func NewEngine(board *core.Board) *Engine {
 	return &Engine{Board: board, TT: NewTranspositionalTable(256)}
 }
 
-func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
+func (e *Engine) FindBestMove(timeBudget time.Duration, nmp bool) *core.Move {
 	start := time.Now()
 
 	e.Deadline = start.Add(timeBudget)

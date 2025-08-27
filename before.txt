@@ -1,7 +1,0 @@
-Depth 0: 1 moves... elapsed: 260ns
-Depth 1: 20 moves... elapsed: 30.225µs
-Depth 2: 400 moves... elapsed: 82.991µs
-Depth 3: 8902 moves... elapsed: 892.194µs
-Depth 4: 197281 moves... elapsed: 18.962284ms
-Depth 5: 4865609 moves... elapsed: 444.868951ms
-Depth 6: 119060324 moves... elapsed: 11.227094524s

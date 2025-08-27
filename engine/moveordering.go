@@ -26,6 +26,10 @@ func (e *Engine) MoveScore(move core.Move) (score int) {
 		victim = core.PieceTypePawn | ^(attacker & core.PieceColorMask)
 	}
 
+	if ((attacker & core.PieceTypeMask) == core.PieceTypePawn) && (move.To == move.From+16 || move.To == move.From-16) {
+		score += 50
+	}
+
 	if victim != core.PieceNone {
 		score += 100 + 10*e.PieceValue(victim) - e.PieceValue(attacker)
 	}

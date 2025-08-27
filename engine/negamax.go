@@ -32,6 +32,7 @@ func (e *Engine) negamax(depth int, alpha, beta, rootDepth int) int {
 	}
 
 	// TODO: keep an eye on this, I've found sometimes it makes the engine worse
+	// i don't trust you
 	isNullWindow := beta - alpha == 1
 	nmpMask := e.Board.AllPieces
 	nmpMask ^= e.Board.PieceBitboards[0][core.PieceTypeKing - 1] | e.Board.PieceBitboards[1][core.PieceTypeKing - 1]
@@ -87,8 +88,10 @@ func (e *Engine) negamax(depth int, alpha, beta, rootDepth int) int {
 
 		isCapture := (move.To == board.EnPassantTarget) || ((1 << move.To) & board.AllPieces) != 0
 		board.Push(&move)
-		enemyInCheck := board.InCheck(board.WhiteToMove)
 		searchDepth := depth - 1
+
+		// LMR
+		enemyInCheck := board.InCheck(board.WhiteToMove)
 		if depth >= 3 && !isCapture && !enemyInCheck && i > 3 {
 			searchDepth = depth - 2
 		}
