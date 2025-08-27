@@ -17,13 +17,15 @@ TODO:
 - Implement late move reductions (LMR) [DONE]
 - Implement time management [DONE]
 - Basic material exchange evaluation [DONE]
+- Implement piece-square-tables [DONE]
 
 - Implement killer moves
 - Implement opening book
 - Implement endgame tablebases
 - Implement passed pawn evaluation
 - Implement king safety evaluation
-- Implement piece-square-tables
+- Implement SEE
+
 - Implement multi-threading
 */
 
@@ -32,6 +34,7 @@ type Engine struct {
 	TT *TranspositionalTable
 	Deadline time.Time
 	NodesSearched uint64
+	Aborted bool
 }
 
 func (e *Engine) TimeUp() bool {
@@ -55,7 +58,7 @@ func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 
 	e.OrderMoves(moves)
 
-	var maxDepth int = 20 // time budget will take over before we ever finish thsi search
+	var maxDepth int = 30 // time budget will take over before we ever finish thsi search
 	var bestMove core.Move
 	var bestValue int
 	depthReached := 0
@@ -70,8 +73,13 @@ func (e *Engine) FindBestMove(timeBudget time.Duration) *core.Move {
 
 		for _, move := range moves {
 			e.Board.Push(&move)
+			e.Aborted = false
 			moveValue := -e.negamax(depth-1, math.MinInt, math.MaxInt)
 			e.Board.Pop()
+
+			if e.Aborted {
+				break // Do not use a partially searched path
+			}
 
 			if moveValue > currentBestValue {
 				currentBestValue = moveValue

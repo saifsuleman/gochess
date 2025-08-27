@@ -10,6 +10,11 @@ const (
 func (e *Engine) negamax(depth int, alpha, beta int) int {
 	e.NodesSearched++
 
+	if e.NodesSearched % 2048 == 0 && e.TimeUp() {
+		e.Aborted = true
+		return 0
+	}
+
 	originalAlpha := alpha
 	key := e.Board.ComputeZobristHash()
 
@@ -20,18 +25,19 @@ func (e *Engine) negamax(depth int, alpha, beta int) int {
 		ttMove = m
 	}
 
-	if depth <= 0 || e.TimeUp() {
+	if depth <= 0 {
 		return e.quiscence(alpha, beta)
 	}
 
-	if depth >= 3 && !e.Board.InCheck(e.Board.WhiteToMove) {
-		e.Board.WhiteToMove = !e.Board.WhiteToMove // TODO: need to restore state better
-		nullScore := -e.negamax(depth-3, -beta, -beta+1) // reduction R=2
-		e.Board.WhiteToMove = !e.Board.WhiteToMove
-		if nullScore >= beta {
-			return nullScore
-		}
-	}
+	// Null move pruning
+	// if depth >= 3 && !e.Board.InCheck(e.Board.WhiteToMove) {
+	// 	e.Board.WhiteToMove = !e.Board.WhiteToMove // TODO: need to restore state better
+	// 	nullScore := -e.negamax(depth-3, -beta, -beta+1) // reduction R=2
+	// 	e.Board.WhiteToMove = !e.Board.WhiteToMove
+	// 	if nullScore >= beta {
+	// 		return nullScore
+	// 	}
+	// }
 
 	board := e.Board
 	moves := board.GenerateLegalMoves()
@@ -62,6 +68,7 @@ func (e *Engine) negamax(depth int, alpha, beta int) int {
 		if score > alpha {
 			alpha = score
 		}
+
 		if alpha >= beta {
 			e.TT.Store(key, depth, bestScore, FlagLower, bestMove)
 			return bestScore
@@ -69,6 +76,8 @@ func (e *Engine) negamax(depth int, alpha, beta int) int {
 	}
 
 	e.OrderMoves(moves)
+
+	firstMove := true
 	for i, move := range moves {
 		if move == ttMove {
 			continue
@@ -83,8 +92,9 @@ func (e *Engine) negamax(depth int, alpha, beta int) int {
 		}
 
 		var score int
-		if i == 0 {
+		if firstMove {
 			score = -e.negamax(searchDepth, -beta, -alpha)
+			firstMove = false
 		} else {
 			score = -e.negamax(searchDepth, -alpha - 1, -alpha)
 			if score > alpha && score < beta {
